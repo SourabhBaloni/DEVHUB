@@ -12,7 +12,15 @@
       "Bash(sf project *)",
       "WebSearch",
       "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")",
-      "Bash(py --version)"
+      "Bash(py --version)",
+      "Bash(node gen.js)",
+      "Bash(sed -i 's/__version__ = \"0.3.0\"/__version__ = \"0.4.0\"/' src/sf_cicd_init/__init__.py)",
+      "Bash(sed -i 's/^version = \"0.3.0\"/version = \"0.4.0\"/' pyproject.toml)",
+      "Bash(./.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(rm -rf dist build)",
+      "Bash(./.venv/Scripts/python.exe -m build)",
+      "Bash(python -m pip install --force-reinstall --no-deps \"a:/VS CODE REPS/sf-cicd-init/dist/sf_cicd_init-0.4.0-py3-none-any.whl\")",
+      "Bash(python -m sf_cicd_init.cli init --help)"
     ]
   }
 }
