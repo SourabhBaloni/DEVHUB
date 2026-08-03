@@ -1,16 +1,15 @@
-import { LightningElement, api } from 'lwc';
+import { LightningElement, api } from "lwc";
 
 export default class EmployeeChild extends LightningElement {
+  // Public property
+  @api employeeName;
+  @api employeeDept;
 
-    // Public property
-    @api employeeName;
-    @api employeeDept;
+  message = "";
 
-    message = '';
-
-    // Public method
-    @api
-    showMessage() {
-        this.message = 'Hello ' + this.employeeName + '!';
-    }
+  // Public method
+  @api
+  showMessage() {
+    this.message = "Hello " + this.employeeName + "!";
+  }
 }

@@ -38,12 +38,12 @@ to count, they open a **Pull Request** (a "please review and accept my change" t
 robot then runs quality checks and a dry-run against Salesforce. A human reviewer approves.
 Only then can the change merge — and merging automatically deploys it to your org.
 
-| | |
-|---|---|
-| ✅ **Nothing sneaks in** | Direct edits to protected branches are blocked. Every change goes through a reviewed Pull Request. |
-| 🤖 **Checks run themselves** | Formatting, linting, unit tests, and a Salesforce validation run on every PR — automatically. |
-| 🚀 **Deploys are hands-off** | Merge the PR and the pipeline deploys just the changed metadata to the matching org. |
-| 🔐 **No passwords stored** | Salesforce login uses the OAuth Client Credentials flow — an app identity, not a person's password. |
+|                              |                                                                                                     |
+| ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| ✅ **Nothing sneaks in**     | Direct edits to protected branches are blocked. Every change goes through a reviewed Pull Request.  |
+| 🤖 **Checks run themselves** | Formatting, linting, unit tests, and a Salesforce validation run on every PR — automatically.       |
+| 🚀 **Deploys are hands-off** | Merge the PR and the pipeline deploys just the changed metadata to the matching org.                |
+| 🔐 **No passwords stored**   | Salesforce login uses the OAuth Client Credentials flow — an app identity, not a person's password. |
 
 ---
 
@@ -92,14 +92,14 @@ flowchart LR
     MAIN -. deploys to .-> PRODO[(Production)]
 ```
 
-| Branch | GitHub environment | Deploys to | Login URL |
-|---|---|---|---|
-| `qa` | qa | QA sandbox | test.salesforce.com |
-| `uat` | uat | UAT sandbox | test.salesforce.com |
-| `preprod` | preprod | Pre-Prod sandbox | test.salesforce.com |
-| `main` | production | Production | login.salesforce.com |
+| Branch    | GitHub environment | Deploys to       | Login URL            |
+| --------- | ------------------ | ---------------- | -------------------- |
+| `qa`      | qa                 | QA sandbox       | test.salesforce.com  |
+| `uat`     | uat                | UAT sandbox      | test.salesforce.com  |
+| `preprod` | preprod            | Pre-Prod sandbox | test.salesforce.com  |
+| `main`    | production         | Production       | login.salesforce.com |
 
-> 💡 **Tip:** Starting out, you can point all four environments at the *same* org. Because
+> 💡 **Tip:** Starting out, you can point all four environments at the _same_ org. Because
 > each environment has its own secrets, splitting them onto real separate orgs later is just
 > a matter of updating those secrets — no workflow changes.
 
@@ -120,13 +120,13 @@ A short checklist of accounts and access:
 
 Five command-line tools. Install once, forget forever.
 
-| Tool | What it's for | Get it |
-|---|---|---|
-| **Git** | Version control | git-scm.com |
-| **Node.js 22** | Runs the JS tooling & Salesforce CLI | nodejs.org |
-| **Salesforce CLI** | Talks to your org | `npm i -g @salesforce/cli` |
-| **GitHub CLI** | Creates repo, secrets, protection | cli.github.com |
-| **VS Code** | Editor (optional but recommended) | code.visualstudio.com |
+| Tool               | What it's for                        | Get it                     |
+| ------------------ | ------------------------------------ | -------------------------- |
+| **Git**            | Version control                      | git-scm.com                |
+| **Node.js 22**     | Runs the JS tooling & Salesforce CLI | nodejs.org                 |
+| **Salesforce CLI** | Talks to your org                    | `npm i -g @salesforce/cli` |
+| **GitHub CLI**     | Creates repo, secrets, protection    | cli.github.com             |
+| **VS Code**        | Editor (optional but recommended)    | code.visualstudio.com      |
 
 Verify everything is installed:
 
@@ -171,10 +171,10 @@ git push origin preprod uat qa
 
 ## Step 3 — Set up the Salesforce app
 
-The pipeline logs in as an *app*, not a person, using the OAuth Client Credentials flow.
+The pipeline logs in as an _app_, not a person, using the OAuth Client Credentials flow.
 You configure this once in your org.
 
-1. **Deploy My Domain.** Setup → *My Domain* → make sure it's *Deployed to Users*. Copy the
+1. **Deploy My Domain.** Setup → _My Domain_ → make sure it's _Deployed to Users_. Copy the
    URL (looks like `https://your-name.my.salesforce.com`).
 2. **Create an External Client App** (or Connected App) with OAuth enabled. Scopes must
    include `Manage user data via APIs (api)` and `Perform requests at any time`.
@@ -189,7 +189,7 @@ You configure this once in your org.
 > **System Administrator** profile, or a permission set with **Modify Metadata Through
 > Metadata API Functions** + **API Enabled**.
 
-Verify the login works *before* touching CI — this should return an `access_token`:
+Verify the login works _before_ touching CI — this should return an `access_token`:
 
 ```bash
 curl -s -X POST "https://YOUR-DOMAIN.my.salesforce.com/services/oauth2/token" \
@@ -205,11 +205,11 @@ curl -s -X POST "https://YOUR-DOMAIN.my.salesforce.com/services/oauth2/token" \
 Each branch deploys through a GitHub "environment" that holds its own secret values. Create
 four environments (`qa`, `uat`, `preprod`, `production`), then add these three secrets to each:
 
-| Secret name | Value |
-|---|---|
-| `SF_CLIENT_ID` | The app's Consumer Key |
-| `SF_CLIENT_SECRET` | The app's Consumer Secret |
-| `SF_INSTANCE_URL` | Your **My Domain** URL (not login/test.salesforce.com) |
+| Secret name        | Value                                                  |
+| ------------------ | ------------------------------------------------------ |
+| `SF_CLIENT_ID`     | The app's Consumer Key                                 |
+| `SF_CLIENT_SECRET` | The app's Consumer Secret                              |
+| `SF_INSTANCE_URL`  | Your **My Domain** URL (not login/test.salesforce.com) |
 
 The GitHub CLI makes this quick and keeps secrets off your screen:
 
@@ -235,11 +235,11 @@ gh secret set SF_INSTANCE_URL  --env qa --repo "$REPO" \
 Three files under `.github/` define the whole pipeline (explained line-by-line
 [below](#the-yaml-files-explained)):
 
-| File | Job |
-|---|---|
+| File                                    | Job                                                       |
+| --------------------------------------- | --------------------------------------------------------- |
 | `.github/actions/setup-sfdx/action.yml` | Shared setup: Node, Salesforce CLI, delta tool, and login |
-| `.github/workflows/pr-validation.yml` | Runs on every PR — quality gates + check-only validation |
-| `.github/workflows/deploy.yml` | Runs on merge — deploys the delta to the matching org |
+| `.github/workflows/pr-validation.yml`   | Runs on every PR — quality gates + check-only validation  |
+| `.github/workflows/deploy.yml`          | Runs on merge — deploys the delta to the matching org     |
 
 You also need a `package.json` with these scripts (the workflows call them):
 
@@ -313,31 +313,31 @@ the login logic lives in exactly one place.
 
 ```yaml
 name: "Setup SFDX + Auth (Client Credentials)"
-inputs:                          # values the caller passes in
-  client-id:     { required: true }
+inputs: # values the caller passes in
+  client-id: { required: true }
   client-secret: { required: true }
-  instance-url:  { required: true }
-  alias:         { default: "targetOrg" }
+  instance-url: { required: true }
+  alias: { default: "targetOrg" }
 
 runs:
-  using: "composite"             # a reusable bundle of steps
+  using: "composite" # a reusable bundle of steps
   steps:
     - uses: actions/setup-node@v4
-      with: { node-version: "22", cache: "npm" }   # Node 22 — required!
+      with: { node-version: "22", cache: "npm" } # Node 22 — required!
 
     - shell: bash
-      run: npm ci                # install project dependencies
+      run: npm ci # install project dependencies
 
-    - shell: bash                # install Salesforce CLI + the delta plugin
+    - shell: bash # install Salesforce CLI + the delta plugin
       run: |
         npm install --global @salesforce/cli@latest
         echo "y" | sf plugins install sfdx-git-delta
 
-    - shell: bash                # log in with the app identity
+    - shell: bash # log in with the app identity
       env:
-        CC_CLIENT_ID:     ${{ inputs.client-id }}
+        CC_CLIENT_ID: ${{ inputs.client-id }}
         CC_CLIENT_SECRET: ${{ inputs.client-secret }}
-        CC_INSTANCE_URL:  ${{ inputs.instance-url }}
+        CC_INSTANCE_URL: ${{ inputs.instance-url }}
       run: |
         RESP=$(curl -s -X POST "${CC_INSTANCE_URL}/services/oauth2/token" \
           --data-urlencode "grant_type=client_credentials" \
@@ -348,13 +348,13 @@ runs:
           --alias "${{ inputs.alias }}" --set-default --no-prompt
 ```
 
-| Part | What it does |
-|---|---|
-| `inputs` | The three secrets + an alias the workflow hands to this action. |
-| `using: composite` | Marks it a reusable set of steps you can drop into any job. |
-| `setup-node · v22` | Installs Node 22 and caches npm downloads for speed. |
-| `npm ci` | Installs exactly the dependencies from `package-lock.json`. |
-| `curl … /oauth2/token` | Exchanges the app's key + secret for a temporary access token. |
+| Part                        | What it does                                                      |
+| --------------------------- | ----------------------------------------------------------------- |
+| `inputs`                    | The three secrets + an alias the workflow hands to this action.   |
+| `using: composite`          | Marks it a reusable set of steps you can drop into any job.       |
+| `setup-node · v22`          | Installs Node 22 and caches npm downloads for speed.              |
+| `npm ci`                    | Installs exactly the dependencies from `package-lock.json`.       |
+| `curl … /oauth2/token`      | Exchanges the app's key + secret for a temporary access token.    |
 | `sf org login access-token` | Hands that token to the Salesforce CLI so later steps can deploy. |
 
 ### B · The PR validation workflow
@@ -412,24 +412,24 @@ jobs:
             --test-level RunLocalTests --wait 60
 ```
 
-| Part | What it does |
-|---|---|
-| `on: pull_request` | Triggers whenever a PR targets one of the four branches. |
-| `resolve-env` | Reads the target branch and picks the matching environment (so the right org's secrets load). |
-| `quality` | Runs Prettier, ESLint, and Jest. This is the **Lint, Format & Jest** required check. |
-| `validate · needs` | Waits for `quality` to pass first, then runs the Salesforce check. This is the **Check-only Validation** required check. |
-| `fetch-depth: 0` | Grabs full git history so the delta tool can compare branches. |
-| `sf sgd source delta` | Computes exactly what changed vs. the target branch. |
-| `deploy validate` | Asks Salesforce "would this deploy succeed?" without actually deploying. |
+| Part                  | What it does                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `on: pull_request`    | Triggers whenever a PR targets one of the four branches.                                                                 |
+| `resolve-env`         | Reads the target branch and picks the matching environment (so the right org's secrets load).                            |
+| `quality`             | Runs Prettier, ESLint, and Jest. This is the **Lint, Format & Jest** required check.                                     |
+| `validate · needs`    | Waits for `quality` to pass first, then runs the Salesforce check. This is the **Check-only Validation** required check. |
+| `fetch-depth: 0`      | Grabs full git history so the delta tool can compare branches.                                                           |
+| `sf sgd source delta` | Computes exactly what changed vs. the target branch.                                                                     |
+| `deploy validate`     | Asks Salesforce "would this deploy succeed?" without actually deploying.                                                 |
 
 ### C · The deploy workflow
 
-Runs when a PR is merged (a push to a protected branch). This one *does* deploy.
+Runs when a PR is merged (a push to a protected branch). This one _does_ deploy.
 
 ```yaml
 name: Deploy
 on:
-  push:                          # fires when a merge lands on one of these branches
+  push: # fires when a merge lands on one of these branches
     branches: [main, preprod, uat, qa]
     paths: ["force-app/**", "manifest/**"]
 
@@ -442,16 +442,16 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: ./.github/actions/setup-sfdx
         with:
-          client-id:     ${{ secrets.SF_CLIENT_ID }}
+          client-id: ${{ secrets.SF_CLIENT_ID }}
           client-secret: ${{ secrets.SF_CLIENT_SECRET }}
-          instance-url:  ${{ secrets.SF_INSTANCE_URL }}
-      - run: |                           # delta between this commit and the one before it
+          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+      - run: | # delta between this commit and the one before it
           sf sgd source delta --to HEAD --from "HEAD~1" \
             --output-dir delta --generate-delta --source-dir force-app
-      - run: |                           # deploy the changed metadata
+      - run: | # deploy the changed metadata
           sf project deploy start --manifest delta/package/package.xml \
             --test-level RunLocalTests --wait 60
-      - run: |                           # apply deletions, if any
+      - run: | # apply deletions, if any
           if grep -q "<types>" delta/destructiveChanges/destructiveChanges.xml; then
             sf project deploy start \
               --manifest delta/destructiveChanges/package.xml \
@@ -460,12 +460,12 @@ jobs:
           fi
 ```
 
-| Part | What it does |
-|---|---|
-| `on: push` | Runs after a merge lands on a protected branch. |
-| `paths:` | Only bothers running when Salesforce metadata actually changed. |
-| `--from HEAD~1` | Compares the merge commit to the one before it to find the delta. |
-| `deploy start` | The real deployment — pushes changed metadata to the org. |
+| Part                       | What it does                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| `on: push`                 | Runs after a merge lands on a protected branch.                                                 |
+| `paths:`                   | Only bothers running when Salesforce metadata actually changed.                                 |
+| `--from HEAD~1`            | Compares the merge commit to the one before it to find the delta.                               |
+| `deploy start`             | The real deployment — pushes changed metadata to the org.                                       |
 | `post-destructive-changes` | Removes files you deleted from the org. Uses an empty `package.xml` + the destructive manifest. |
 
 > ⚠️ **Common gotcha:** Destructive deletes need
@@ -510,35 +510,35 @@ sequenceDiagram
 
 Every real error we hit setting this up, and the fix. If the pipeline goes red, start here.
 
-| Message you see | Cause | Fix |
-|---|---|---|
-| `markAsUncloneable is not a function` | Salesforce CLI on Node 20 | Use `node-version: "22"` everywhere |
+| Message you see                                | Cause                                | Fix                                                            |
+| ---------------------------------------------- | ------------------------------------ | -------------------------------------------------------------- |
+| `markAsUncloneable is not a function`          | Salesforce CLI on Node 20            | Use `node-version: "22"` everywhere                            |
 | `sObject type 'Organization' is not supported` | Run-As user lacks deploy permissions | Give it System Administrator, or Modify Metadata + API Enabled |
-| `Code style issues found` | Files aren't formatted | Run `npm run prettier` and commit |
-| `all files matching the glob … are ignored` | ESLint found no files | Add `--no-error-on-unmatched-pattern` |
-| `No tests found, exiting with code 1` | Jest found no tests | Add `--passWithNoTests` |
-| `npm ci … no package-lock.json` | Lock file not committed | Run `npm install`, commit the lock file |
-| `invalid_client` / `invalid_grant` | Wrong key/secret or app not ready | Recheck secrets; wait 10 min after app changes |
-| PR stuck **BEHIND**, can't merge | Branch out of date (strict checks) | Update branch: `gh pr update-branch <n>` |
-| Can't approve your own PR | GitHub rule | Add a second collaborator as reviewer |
+| `Code style issues found`                      | Files aren't formatted               | Run `npm run prettier` and commit                              |
+| `all files matching the glob … are ignored`    | ESLint found no files                | Add `--no-error-on-unmatched-pattern`                          |
+| `No tests found, exiting with code 1`          | Jest found no tests                  | Add `--passWithNoTests`                                        |
+| `npm ci … no package-lock.json`                | Lock file not committed              | Run `npm install`, commit the lock file                        |
+| `invalid_client` / `invalid_grant`             | Wrong key/secret or app not ready    | Recheck secrets; wait 10 min after app changes                 |
+| PR stuck **BEHIND**, can't merge               | Branch out of date (strict checks)   | Update branch: `gh pr update-branch <n>`                       |
+| Can't approve your own PR                      | GitHub rule                          | Add a second collaborator as reviewer                          |
 
 ---
 
 ## Glossary
 
-| Term | Meaning |
-|---|---|
-| **CI/CD** | Continuous Integration / Continuous Deployment — automating checks and releases. |
-| **Pull Request (PR)** | A request to merge your changes, where checks run and people review. |
+| Term                            | Meaning                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| **CI/CD**                       | Continuous Integration / Continuous Deployment — automating checks and releases.   |
+| **Pull Request (PR)**           | A request to merge your changes, where checks run and people review.               |
 | **Branch protection / ruleset** | Rules GitHub enforces on a branch (no direct commits, required checks, approvals). |
-| **Workflow** | An automated job defined in a YAML file, run by GitHub Actions. |
-| **Delta** | Only the files that changed — deployed instead of the whole project. |
-| **Client Credentials flow** | Logging in as an app identity (run-as user), no human password. |
-| **My Domain** | Your org's custom URL — required for the Client Credentials login. |
-| **Check-only validation** | A deploy dry-run: "would this work?" without changing the org. |
-| **Secret** | An encrypted value (like a key) stored in GitHub, never in your code. |
+| **Workflow**                    | An automated job defined in a YAML file, run by GitHub Actions.                    |
+| **Delta**                       | Only the files that changed — deployed instead of the whole project.               |
+| **Client Credentials flow**     | Logging in as an app identity (run-as user), no human password.                    |
+| **My Domain**                   | Your org's custom URL — required for the Client Credentials login.                 |
+| **Check-only validation**       | A deploy dry-run: "would this work?" without changing the org.                     |
+| **Secret**                      | An encrypted value (like a key) stored in GitHub, never in your code.              |
 
 ---
 
-*Every step in this guide was verified end-to-end against a live org. A visual (HTML) version
-with the same content lives at `docs/cicd-guide.html`.*
+_Every step in this guide was verified end-to-end against a live org. A visual (HTML) version
+with the same content lives at `docs/cicd-guide.html`._

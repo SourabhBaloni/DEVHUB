@@ -42,9 +42,9 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: ./.github/actions/setup-sfdx
         with:
-          client-id:    ${{ secrets.SF_CLIENT_ID }}
-          jwt-key:      ${{ secrets.SF_JWT_KEY }}
-          username:     ${{ secrets.SF_USERNAME }}
+          client-id: ${{ secrets.SF_CLIENT_ID }}
+          jwt-key: ${{ secrets.SF_JWT_KEY }}
+          username: ${{ secrets.SF_USERNAME }}
           instance-url: ${{ secrets.SF_INSTANCE_URL }}
       - name: Generate delta
         run: |

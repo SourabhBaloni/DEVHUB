@@ -1,28 +1,28 @@
 <template>
-    <lightning-card title="Employee Parent">
+  <lightning-card title="Employee Parent">
+    <div class="slds-p-around_medium">
+      <lightning-input
+        label="Employee Name"
+        value={empName}
+        onchange={handleNameChange}
+      >
+      </lightning-input>
 
-        <div class="slds-p-around_medium">
+      <p class="slds-m-top_small">Parent Value: {employee.name}</p>
 
-            <lightning-input
-                label="Employee Name"
-                value={empName}
-                onchange={handleNameChange}>
-            </lightning-input>
+      <!-- Pass data Parent -> Child -->
+      <c-employee-child
+        employee-name={empName}
+        employee-dept={employee.dir.name}
+      >
+      </c-employee-child>
 
-            <p class="slds-m-top_small">
-                Parent Value: {employee.name}
-            </p>
-
-            <!-- Pass data Parent -> Child -->
-            <c-employee-child employee-name={empName} employee-dept={employee.dir.name}> </c-employee-child>
-
-            <lightning-button
-                class="slds-m-top_medium"
-                label="Call Child Method"
-                onclick={handleCallChild}>
-            </lightning-button>
-
-        </div>
-
-    </lightning-card>
+      <lightning-button
+        class="slds-m-top_medium"
+        label="Call Child Method"
+        onclick={handleCallChild}
+      >
+      </lightning-button>
+    </div>
+  </lightning-card>
 </template>

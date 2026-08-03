@@ -89,10 +89,10 @@ openssl req -x509 -sha256 -nodes -days 3650 -newkey rsa:2048 \
 
 This creates two files:
 
-| File | What it is | Where it goes |
-|---|---|---|
-| `server.key` | **Private key** (secret) | GitHub secret (Step 9) |
-| `server.crt` | Certificate (public) | Uploaded to Salesforce (Step 5) |
+| File         | What it is               | Where it goes                   |
+| ------------ | ------------------------ | ------------------------------- |
+| `server.key` | **Private key** (secret) | GitHub secret (Step 9)          |
+| `server.crt` | Certificate (public)     | Uploaded to Salesforce (Step 5) |
 
 > ⚠️ **Never commit `server.key`.** `.gitignore` already blocks `*.key`, but keep it out
 > of the repo folder entirely to be safe.
@@ -114,12 +114,12 @@ In your **Sandbox** org:
    - Contact Email: your email
 3. Check **Enable OAuth Settings**.
 4. Callback URL: `http://localhost:1717/OauthRedirect`
-   *(required by the form; unused for JWT)*
+   _(required by the form; unused for JWT)_
 5. Check **Use digital signatures** → **Choose File** → upload **`server.crt`**.
 6. Under **Selected OAuth Scopes**, add:
    - `Manage user data via APIs (api)`
    - `Perform requests at any time (refresh_token, offline_access)`
-   - `Full access (full)` *(optional, convenient)*
+   - `Full access (full)` _(optional, convenient)_
 7. Click **Save**, then **Continue**.
 
 ⏳ **Wait ~10 minutes** for the Connected App to propagate before testing.
@@ -184,16 +184,16 @@ sf org login jwt \
 
 1. On GitHub: repo → **Settings** → **Environments** → **New environment** →
    name it exactly **`sandbox`** → **Configure environment**.
-   *(Optional: add yourself under **Required reviewers** to require manual approval
-   before each deploy.)*
+   _(Optional: add yourself under **Required reviewers** to require manual approval
+   before each deploy.)_
 2. In that environment, under **Environment secrets** → **Add secret**, create all four:
 
-| Secret name | Value |
-|---|---|
-| `SF_CONSUMER_KEY` | The Consumer Key from Step 6 |
+| Secret name         | Value                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SF_CONSUMER_KEY`   | The Consumer Key from Step 6                                                                                                                   |
 | `SF_JWT_SERVER_KEY` | The **entire contents** of `server.key` — open it in a text editor and paste everything, including the `-----BEGIN...` and `-----END...` lines |
-| `SF_USERNAME` | The integration user's full username |
-| `SF_INSTANCE_URL` | `https://test.salesforce.com` |
+| `SF_USERNAME`       | The integration user's full username                                                                                                           |
+| `SF_INSTANCE_URL`   | `https://test.salesforce.com`                                                                                                                  |
 
 - [ ] All four secrets added under the `sandbox` environment
 
@@ -236,12 +236,12 @@ Merge the PR into `main`.
 
 ### The files in this repo
 
-| File | Purpose |
-|---|---|
+| File                                    | Purpose                                                             |
+| --------------------------------------- | ------------------------------------------------------------------- |
 | `.github/actions/setup-sfdx/action.yml` | Shared setup: Node, npm, Salesforce CLI, `sfdx-git-delta`, JWT auth |
-| `.github/workflows/pr-validation.yml` | PR → check-only validation + quality gates |
-| `.github/workflows/deploy.yml` | Push to `main` → delta deploy to Sandbox |
-| `docs/CICD-SETUP.md` | This guide |
+| `.github/workflows/pr-validation.yml`   | PR → check-only validation + quality gates                          |
+| `.github/workflows/deploy.yml`          | Push to `main` → delta deploy to Sandbox                            |
+| `docs/CICD-SETUP.md`                    | This guide                                                          |
 
 ### How the delta is calculated
 
@@ -255,16 +255,17 @@ Merge the PR into `main`.
 
 Both workflows use `--test-level RunLocalTests`. To change, edit the `sf project deploy`
 lines in the workflow files:
+
 - `RunSpecifiedTests` — fastest, requires `--tests ClassA ClassB`.
 - `NoTestRun` — no tests (Sandbox only; not allowed for production).
 
 ### Common failures
 
-| Symptom | Fix |
-|---|---|
-| `We couldn't validate the JWT...` | Re-check Steps 5–8; wait 10 min after Connected App creation |
-| `INVALID_LOGIN` | Wrong username or user not pre-authorized (Step 7) |
-| Deploy fails on tests / coverage | Fix failing Apex tests; org requires ≥75% coverage |
+| Symptom                                 | Fix                                                                                 |
+| --------------------------------------- | ----------------------------------------------------------------------------------- |
+| `We couldn't validate the JWT...`       | Re-check Steps 5–8; wait 10 min after Connected App creation                        |
+| `INVALID_LOGIN`                         | Wrong username or user not pre-authorized (Step 7)                                  |
+| Deploy fails on tests / coverage        | Fix failing Apex tests; org requires ≥75% coverage                                  |
 | Delta is empty but you expected changes | Ensure the workflow checks out full history (`fetch-depth: 0`) — already configured |
 
 ### Adding Production later
