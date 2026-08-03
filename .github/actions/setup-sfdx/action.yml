@@ -1,0 +1,33 @@
+name: "Setup SFDX + Auth (JWT)"
+description: "Node, Salesforce CLI, sfdx-git-delta, and JWT login."
+
+inputs:
+  client-id:    { required: true }
+  jwt-key:      { required: true }
+  username:     { required: true }
+  instance-url: { required: true }
+  alias:        { default: "targetOrg" }
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with: { node-version: "22", cache: "npm" }
+    - shell: bash
+      run: npm ci
+    - shell: bash
+      run: |
+        npm install --global @salesforce/cli@latest
+        echo "y" | sf plugins install sfdx-git-delta
+    - shell: bash
+      env:
+        JWT_KEY: ${{ inputs.jwt-key }}
+      run: |
+        echo "$JWT_KEY" > "${RUNNER_TEMP}/server.key"
+        sf org login jwt \
+          --client-id "${{ inputs.client-id }}" \
+          --jwt-key-file "${RUNNER_TEMP}/server.key" \
+          --username "${{ inputs.username }}" \
+          --instance-url "${{ inputs.instance-url }}" \
+          --alias "${{ inputs.alias }}" --set-default
+        rm -f "${RUNNER_TEMP}/server.key"

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import openpyxl; print\\('openpyxl OK'\\)\")",
+      "Bash(where winget *)",
+      "Bash(where choco *)",
+      "Bash(where scoop *)",
+      "Bash(where git *)",
+      "Bash(git config *)",
+      "Bash(winget install *)",
+      "Read(//a/VS CODE REPS/**)",
+      "Bash(sf project *)",
+      "WebSearch",
+      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")",
+      "Bash(py --version)"
+    ]
+  }
+}

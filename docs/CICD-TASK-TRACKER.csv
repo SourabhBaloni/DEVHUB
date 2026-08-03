@@ -1,0 +1,42 @@
+#,Task,Category,Owner,Status,Notes,Last Updated
+1,Confirm GitHub access approach (no password automation),Setup,Claude+User,DONE,Chrome automation unavailable in bg session; used existing VS Code GitHub token via gh CLI,2026-07-21
+2,Install GitHub CLI (gh),Setup,Claude,DONE,gh 2.96.0 installed via winget,2026-07-21
+3,Authenticate GitHub (SourabhBaloni),Setup,Claude,DONE,Reused VS Code token (scopes: repo/workflow); no password used,2026-07-21
+4,Scaffold new project "Salesforce-Learning-Projects-Rep",Project,Claude,DONE,New SFDX project at A:/VS CODE REPS/Salesforce-Learning-Projects-Rep,2026-07-21
+5,Build multi-branch CI/CD workflows,CI/CD,Claude,DONE,pr-validation.yml + deploy.yml map branch->environment (qa/uat/preprod/production),2026-07-21
+6,git init + initial commit + create 4 branches,Git,Claude,DONE,main/preprod/uat/qa,2026-07-21
+7,Create GitHub repo,GitHub,Claude,DONE,https://github.com/SourabhBaloni/Salesforce-Learning-Projects-Rep,2026-07-21
+8,Push all 4 branches,GitHub,Claude,DONE,main (default) + preprod + uat + qa pushed,2026-07-21
+9,Create GitHub environments,GitHub,Claude,DONE,qa / uat / preprod / production created,2026-07-21
+10,Repo visibility set to public (enables free protection),GitHub,Claude,DONE,Branch protection needs public repo on free plan,2026-07-21
+11,Apply branch protection (no direct commit / required check / approval),Branch Protection,Claude,DONE,Ruleset 19335651 active on all 4 branches; 0 bypass actors,2026-07-21
+12,Add reviewer/collaborator (solo cannot self-approve),Branch Protection,Claude,DONE,SourabhBaloniSW accepted invite; active collaborator [write],2026-07-21
+13,Auth flow: switched JWT -> Client Credentials,Salesforce Auth,Claude,DONE,User enabled Client Credentials on External Client App; no JWT cert needed,2026-07-21
+14,Configure External Client App (Client Credentials + Run-As user),Salesforce Auth,User,DONE,Verified: token endpoint returns access_token; sf CLI connects as sourabhbaloni66@gmail.com,2026-07-21
+15,Set SF_CLIENT_ID + SF_CLIENT_SECRET secrets (all envs),CI/CD,Claude,DONE,Stored in qa/uat/preprod/production encrypted secrets,2026-07-21
+16,Set SF_INSTANCE_URL = My Domain (all envs),CI/CD,Claude,DONE,empathetic-impala-9p2zil-dev-ed.trailblaze.my.salesforce.com,2026-07-21
+17,Verify auth locally (curl + sf CLI),Validation,Claude,DONE,Client Credentials confirmed working end to end,2026-07-21
+18,Add package-lock.json + sample LWC + harden quality scripts,CI/CD,Claude,DONE,All 3 quality gates pass locally (jest 100% coverage),2026-07-21
+19,Open first test PR into qa (PR #1),Validation,Claude,DONE,https://github.com/SourabhBaloni/Salesforce-Learning-Projects-Rep/pull/1,2026-07-21
+20,PR validation run (CI check-only),Validation,Claude,DONE,"ALL CHECKS GREEN: resolve-env + quality + check-only validation all pass against org",2026-07-21
+21,FIX Run-As user permissions in Salesforce,Salesforce Auth,User,DONE,"Profile updated; Organization/ApexClass/Account now readable; local validate passes",2026-07-21
+22,Reviewer approval of PR #1,Validation,SourabhBaloniSW,ACTION NEEDED,"Checks green; PR BLOCKED pending 1 approval. I cannot self-approve (author). SourabhBaloniSW approves at PR #1",2026-07-21
+23,Deploy run to org (on merge to qa),Validation,Claude,READY,"After approval+merge, Deploy workflow auto-runs; I will watch and confirm helloWorld lands in org",2026-07-21
+24,Rotate Client Secret (shared in plaintext),Security,User,RECOMMENDED,Rotate in Salesforce after confirming; I will update the secret,2026-07-21
+25,PR Validation report + fix playbook generator,Reporting,Claude,DONE,"scripts/reports/pr-validation-report.mjs; outputs docs/PR-VALIDATION-REPORT.csv + docs/VALIDATION-FIX-PLAYBOOK.csv",2026-07-21
+26,Merge PR #1 (helloWorld LWC) to qa,Validation,User,DONE,Merged by user; qa updated,2026-07-21
+27,Add GreetingService Apex class (+test) + greetingCard LWC,Project,Claude,DONE,Local gates + dry-run RunLocalTests passed (2 Apex tests),2026-07-21
+28,Open PR #2 into qa,Validation,Claude,DONE,https://github.com/SourabhBaloni/Salesforce-Learning-Projects-Rep/pull/2,2026-07-21
+29,PR #2 validation run,Validation,Claude,DONE,ALL GREEN (resolve-env + quality + check-only validation incl 2 Apex tests),2026-07-21
+30,Review + merge PR #2,Validation,User,DONE,Merged; GreetingService + greetingCard deployed and confirmed in org,2026-07-21
+31,Modify existing components (update-path test),Project,Claude,DONE,"greet() trims + greetLoud(); greetingCard uppercase prop; tests updated",2026-07-21
+32,Open PR #3 into qa,Validation,Claude,DONE,https://github.com/SourabhBaloni/Salesforce-Learning-Projects-Rep/pull/3,2026-07-21
+33,PR #3 validation run (delta UPDATE path),Validation,Claude,DONE,"ALL GREEN: modification path validated (Changed components + 3 Apex tests)",2026-07-21
+34,Review + merge PR #3,Validation,User,PENDING,PR BLOCKED / REVIEW_REQUIRED; approve then merge to deploy modifications,2026-07-21
+35,Promotion flow (qa->uat) - PR #4,Promotion,Claude,CANCELLED,"Feature not wanted per user; PR #4 CLOSED; qa branch preserved",2026-07-21
+36,Fix destructive deploy step (--manifest not --metadata-dir),CI/CD,Claude,DONE,Verified correct syntax via local dry-run (success=true),2026-07-21
+37,Add destructive check-only validation to PR workflow,CI/CD,Claude,DONE,pr-validation.yml dry-runs destructive changes,2026-07-21
+38,Destructive test PR #5 (remove helloWorld LWC),Validation,Claude,DONE,"ALL GREEN: destructive validation ran - Status Succeeded, 1/1, dry-run complete",2026-07-21
+39,Review + merge PR #5,Validation,SourabhBaloniSW+User,PENDING,"Branch updated (BEHIND cleared); re-validating. Needs SourabhBaloniSW approval then merge",2026-07-21
+40,Verify helloWorld removed from org,Validation,Claude,NOT DONE,"Checked org: LWC bundles = greetingCard + helloWorld. helloWorld STILL PRESENT (PR #5 not merged)",2026-07-21
+41,Layman step-by-step setup guide (with diagrams),Documentation,Claude,DONE,"Markdown + HTML in both repos' docs folders; artifact https://claude.ai/code/artifact/3b7443d8-eee6-4191-8a7d-f856205538b3",2026-07-21

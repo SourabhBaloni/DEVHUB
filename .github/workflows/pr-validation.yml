@@ -1,0 +1,61 @@
+name: PR Validation
+on:
+  pull_request:
+    branches: [QA]
+    paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
+
+concurrency:
+  group: pr-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.map.outputs.environment }}
+    steps:
+      - id: map
+        run: |
+          case "${{ github.base_ref }}" in
+            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  quality:
+    name: Lint, Format & Jest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: "npm" }
+      - run: npm ci
+      - run: npm run prettier:verify
+      - run: npm run lint
+      - run: npm run test:unit:coverage
+
+  validate:
+    name: Check-only Validation
+    needs: [resolve-env, quality]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: ./.github/actions/setup-sfdx
+        with:
+          client-id:    ${{ secrets.SF_CLIENT_ID }}
+          jwt-key:      ${{ secrets.SF_JWT_KEY }}
+          username:     ${{ secrets.SF_USERNAME }}
+          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+      - name: Generate delta
+        run: |
+          mkdir -p delta
+          sf sgd source delta --to HEAD --from "origin/${{ github.base_ref }}" \
+            --output-dir delta --generate-delta --source-dir force-app
+      - name: Check-only validate
+        run: |
+          if grep -q "<types>" delta/package/package.xml; then
+            sf project deploy validate --manifest delta/package/package.xml \
+              --test-level RunLocalTests --wait 60
+          else
+            echo "No deployable metadata changes."
+          fi

@@ -1,0 +1,870 @@
+<title>Salesforce CI/CD Setup Guide</title>
+<style>
+  :root {
+    --ground: #f4f6f8;
+    --surface: #ffffff;
+    --surface-2: #eceff3;
+    --ink: #1a222c;
+    --muted: #55606d;
+    --faint: #8a95a2;
+    --border: #e0e5ea;
+    --border-strong: #cdd4dc;
+    --accent: #0c7c8a;
+    --accent-ink: #0a5b66;
+    --accent-soft: #e0f0f2;
+    --success: #2c8f66;
+    --success-soft: #e3f2ea;
+    --warning: #a9720a;
+    --warning-soft: #f8efd8;
+    --danger: #bd5145;
+    --danger-soft: #f7e5e2;
+    --code-bg: #0f151c;
+    --code-ink: #d7dee7;
+    --code-cmt: #6f9c8f;
+    --code-str: #9ecb8f;
+    --diagram-bg: #ffffff;
+    --shadow: 0 1px 2px rgba(20,30,45,.04), 0 6px 20px rgba(20,30,45,.06);
+    --radius: 10px;
+    --maxw: 62rem;
+    --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1116;
+      --surface: #151b22;
+      --surface-2: #1c242d;
+      --ink: #e6eaf0;
+      --muted: #9aa6b3;
+      --faint: #6b7684;
+      --border: #232c36;
+      --border-strong: #313c48;
+      --accent: #3bb8c5;
+      --accent-ink: #5fcdd8;
+      --accent-soft: #133037;
+      --success: #46b483;
+      --success-soft: #123026;
+      --warning: #d59b3a;
+      --warning-soft: #322613;
+      --danger: #e08579;
+      --danger-soft: #331e1b;
+      --code-bg: #0b1016;
+      --code-ink: #cdd6e0;
+      --diagram-bg: #f4f6f8;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f4f6f8; --surface: #ffffff; --surface-2: #eceff3; --ink: #1a222c;
+    --muted: #55606d; --faint: #8a95a2; --border: #e0e5ea; --border-strong: #cdd4dc;
+    --accent: #0c7c8a; --accent-ink: #0a5b66; --accent-soft: #e0f0f2;
+    --success: #2c8f66; --success-soft: #e3f2ea; --warning: #a9720a; --warning-soft: #f8efd8;
+    --danger: #bd5145; --danger-soft: #f7e5e2; --code-bg: #0f151c; --code-ink: #d7dee7;
+    --diagram-bg: #ffffff; --shadow: 0 1px 2px rgba(20,30,45,.04), 0 6px 20px rgba(20,30,45,.06);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1116; --surface: #151b22; --surface-2: #1c242d; --ink: #e6eaf0;
+    --muted: #9aa6b3; --faint: #6b7684; --border: #232c36; --border-strong: #313c48;
+    --accent: #3bb8c5; --accent-ink: #5fcdd8; --accent-soft: #133037;
+    --success: #46b483; --success-soft: #123026; --warning: #d59b3a; --warning-soft: #322613;
+    --danger: #e08579; --danger-soft: #331e1b; --code-bg: #0b1016; --code-ink: #cdd6e0;
+    --diagram-bg: #f4f6f8; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--font-sans); font-size: 16px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  a { color: var(--accent-ink); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* ---------- shell ---------- */
+  .wrap { max-width: 78rem; margin: 0 auto; padding: 0 1.25rem; }
+  .layout { display: grid; grid-template-columns: 15rem minmax(0,1fr); gap: 2.75rem; align-items: start; }
+  @media (max-width: 60rem) { .layout { grid-template-columns: 1fr; gap: 1rem; } }
+
+  /* ---------- hero ---------- */
+  .hero { border-bottom: 1px solid var(--border); background:
+      radial-gradient(120% 140% at 100% 0%, var(--accent-soft) 0%, transparent 46%); }
+  .hero .wrap { padding-top: 3.25rem; padding-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--accent-ink); font-weight: 600; margin: 0 0 .9rem;
+  }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.08; letter-spacing: -.02em;
+       margin: 0 0 .7rem; text-wrap: balance; font-weight: 800; }
+  .lede { font-size: 1.15rem; color: var(--muted); max-width: 42rem; margin: 0 0 1.6rem; text-wrap: pretty; }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chip {
+    font-family: var(--font-mono); font-size: .76rem; padding: .28rem .6rem;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; color: var(--muted);
+  }
+  .chip b { color: var(--accent-ink); font-weight: 600; }
+
+  /* ---------- toc ---------- */
+  .toc { position: sticky; top: 1.25rem; align-self: start; font-size: .9rem; }
+  @media (max-width: 60rem) {
+    .toc { position: static; background: var(--surface); border: 1px solid var(--border);
+           border-radius: var(--radius); padding: .5rem .25rem; margin-top: 1.25rem; }
+    .toc-inner { max-height: none; }
+    details.toc-m { }
+  }
+  .toc-title { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--faint);
+               font-weight: 700; margin: 0 0 .6rem .75rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: block; padding: .32rem .75rem; color: var(--muted); border-left: 2px solid transparent;
+           border-radius: 0 6px 6px 0; line-height: 1.3; }
+  .toc a:hover { color: var(--ink); background: var(--surface-2); text-decoration: none; }
+  .toc a.active { color: var(--accent-ink); border-left-color: var(--accent); background: var(--accent-soft);
+                  font-weight: 600; }
+
+  /* ---------- content ---------- */
+  main { min-width: 0; padding-bottom: 5rem; }
+  section { padding-top: 2.5rem; margin-top: 1rem; scroll-margin-top: 1.25rem; }
+  section > h2 {
+    font-size: 1.6rem; letter-spacing: -.01em; margin: 0 0 .35rem; font-weight: 750; text-wrap: balance;
+    display: flex; align-items: baseline; gap: .6rem;
+  }
+  section > h2 .num {
+    font-family: var(--font-mono); font-size: .95rem; color: var(--accent); font-weight: 600;
+    background: var(--accent-soft); border-radius: 6px; padding: .1rem .5rem; flex: none;
+  }
+  .section-sub { color: var(--muted); margin: 0 0 1.4rem; max-width: 44rem; }
+  h3 { font-size: 1.12rem; margin: 2rem 0 .5rem; font-weight: 700; letter-spacing: -.01em; }
+  p { max-width: 44rem; }
+  main p, main li { text-wrap: pretty; }
+  ul, ol { padding-left: 1.25rem; }
+  li { margin: .3rem 0; max-width: 43rem; }
+  strong { font-weight: 650; }
+  code:not(pre code) {
+    font-family: var(--font-mono); font-size: .86em; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 5px; padding: .08em .38em; color: var(--accent-ink);
+    word-break: break-word;
+  }
+  .divider { height: 1px; background: var(--border); border: 0; margin: 0; }
+
+  /* ---------- cards / grid ---------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+          padding: 1.1rem 1.2rem; box-shadow: var(--shadow); }
+  .card h4 { margin: 0 0 .3rem; font-size: 1rem; display: flex; align-items: center; gap: .5rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--muted); }
+  .card .k { font-family: var(--font-mono); font-size: .8rem; color: var(--accent-ink); }
+
+  /* ---------- steps ---------- */
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+          box-shadow: var(--shadow); padding: 1.4rem 1.5rem; margin: 1.1rem 0; }
+  .step-head { display: flex; align-items: center; gap: .75rem; margin: 0 0 .2rem; }
+  .step-badge { font-family: var(--font-mono); font-weight: 700; font-size: .82rem; color: #fff;
+                background: var(--accent); width: 1.7rem; height: 1.7rem; border-radius: 7px;
+                display: grid; place-items: center; flex: none; }
+  .step-head h3 { margin: 0; font-size: 1.08rem; }
+  .step-body { margin-top: .5rem; }
+
+  /* ---------- callouts ---------- */
+  .note { border-radius: var(--radius); padding: .85rem 1rem .85rem 1.1rem; margin: 1.1rem 0;
+          border: 1px solid var(--border); border-left-width: 3px; background: var(--surface); font-size: .94rem; }
+  .note p:first-child { margin-top: 0; } .note p:last-child { margin-bottom: 0; }
+  .note .lbl { font-weight: 700; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase;
+               display: inline-block; margin-right: .4rem; }
+  .note.tip { border-left-color: var(--accent); background: var(--accent-soft); }
+  .note.tip .lbl { color: var(--accent-ink); }
+  .note.warn { border-left-color: var(--warning); background: var(--warning-soft); }
+  .note.warn .lbl { color: var(--warning); }
+  .note.ok { border-left-color: var(--success); background: var(--success-soft); }
+  .note.ok .lbl { color: var(--success); }
+
+  /* ---------- code ---------- */
+  .code { margin: 1.1rem 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border-strong);
+          box-shadow: var(--shadow); }
+  .code-bar { display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+              background: var(--surface-2); border-bottom: 1px solid var(--border);
+              padding: .45rem .8rem; }
+  .code-name { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); }
+  .code-name b { color: var(--ink); font-weight: 600; }
+  .copy { font-family: var(--font-sans); font-size: .74rem; color: var(--muted); background: transparent;
+          border: 1px solid var(--border-strong); border-radius: 6px; padding: .2rem .5rem; cursor: pointer; }
+  .copy:hover { color: var(--ink); border-color: var(--accent); }
+  pre { margin: 0; background: var(--code-bg); color: var(--code-ink); padding: 1rem 1.1rem;
+        overflow-x: auto; font-family: var(--font-mono); font-size: .82rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .cmt { color: var(--code-cmt); font-style: italic; }
+  .str { color: var(--code-str); }
+
+  /* ---------- diagrams ---------- */
+  .diagram { background: var(--diagram-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
+             padding: 1.1rem; margin: 1.25rem 0; overflow-x: auto; box-shadow: var(--shadow); }
+  .diagram pre.mermaid { background: transparent; padding: 0; color: #1a222c; display: flex; justify-content: center; }
+  .cap { font-size: .82rem; color: var(--faint); text-align: center; margin: .5rem 0 0; font-style: italic; }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 650; font-size: .78rem; letter-spacing: .04em;
+       text-transform: uppercase; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+  .mono { font-family: var(--font-mono); font-size: .82rem; }
+
+  /* pills */
+  .pill { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .45rem; border-radius: 999px;
+          font-weight: 600; white-space: nowrap; }
+  .pill.g { background: var(--success-soft); color: var(--success); }
+  .pill.a { background: var(--warning-soft); color: var(--warning); }
+  .pill.r { background: var(--danger-soft); color: var(--danger); }
+    /* ---------- author byline ---------- */
+  .byline { display: flex; align-items: center; gap: .7rem; margin: 1.7rem 0 0; }
+  .byline .avatar { width: 2.4rem; height: 2.4rem; border-radius: 999px; flex: none;
+    display: grid; place-items: center; font-family: var(--font-sans); font-weight: 700;
+    font-size: .95rem; color: #fff; background: var(--accent); box-shadow: var(--shadow); }
+  .byline .meta { line-height: 1.3; }
+  .byline .meta .lbl { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--faint); font-weight: 600; display: block; }
+  .byline .meta .name { font-size: 1rem; font-weight: 700; color: var(--ink); }
+
+  footer { border-top: 1px solid var(--border); color: var(--faint); font-size: .85rem;
+           padding: 1.75rem 0 2.5rem; }
+  .kbd { font-family: var(--font-mono); font-size: .78rem; background: var(--surface-2);
+         border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 5px; padding: .05em .4em; }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Plain-English Setup Guide</p>
+    <h1>Salesforce&nbsp;&rarr;&nbsp;GitHub Actions CI/CD, from zero</h1>
+    <p class="lede">Everything a first-timer needs to wire a Salesforce project to an automated pipeline:
+      pull-request checks, reviewer approvals, and hands-off deployments to your org — with every YAML file explained.</p>
+    <div class="chips">
+      <span class="chip"><b>Salesforce DX</b></span>
+      <span class="chip"><b>GitHub Actions</b></span>
+      <span class="chip">Auth: <b>Client Credentials</b></span>
+      <span class="chip">Deploy: <b>delta only</b></span>
+      <span class="chip">Node <b>22</b></span>
+    </div>
+    <div class="byline">
+      <span class="avatar" aria-hidden="true">SB</span>
+      <span class="meta">
+        <span class="lbl">Author of Document</span>
+        <span class="name">Saurabh Baloni</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <nav>
+        <ol>
+          <li><a href="#what">What you're building</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#branches">The branch strategy</a></li>
+          <li><a href="#before">Before you start</a></li>
+          <li><a href="#s1">1 &middot; Install the tools</a></li>
+          <li><a href="#s2">2 &middot; Create repo &amp; branches</a></li>
+          <li><a href="#s3">3 &middot; Salesforce app</a></li>
+          <li><a href="#s4">4 &middot; Environments &amp; secrets</a></li>
+          <li><a href="#s5">5 &middot; Add the pipeline files</a></li>
+          <li><a href="#s6">6 &middot; Lock the branches</a></li>
+          <li><a href="#s7">7 &middot; Try it out</a></li>
+          <li><a href="#yaml">The YAML files, explained</a></li>
+          <li><a href="#daily">Your day-to-day flow</a></li>
+          <li><a href="#trouble">Troubleshooting</a></li>
+          <li><a href="#glossary">Glossary</a></li>
+        </ol>
+      </nav>
+    </aside>
+
+    <main>
+      <!-- WHAT -->
+      <section id="what">
+        <h2>What you're building</h2>
+        <p class="section-sub">A pipeline that guards your Salesforce code and deploys it for you — so nobody
+          hand-deploys metadata or edits the important branches directly.</p>
+        <p>In plain terms: developers work on their own copy of the code. When they want their change to count,
+          they open a <strong>Pull Request</strong> (a "please review and accept my change" ticket). A robot then
+          runs quality checks and a dry-run against Salesforce. A human reviewer approves. Only then can the change
+          merge — and merging automatically deploys it to your org.</p>
+        <div class="cards">
+          <div class="card"><h4>✅ Nothing sneaks in</h4><p>Direct edits to protected branches are blocked. Every change goes through a reviewed Pull Request.</p></div>
+          <div class="card"><h4>🤖 Checks run themselves</h4><p>Formatting, linting, unit tests, and a Salesforce validation run on every PR — automatically.</p></div>
+          <div class="card"><h4>🚀 Deploys are hands-off</h4><p>Merge the PR and the pipeline deploys just the changed metadata to the matching org.</p></div>
+          <div class="card"><h4>🔐 No passwords stored</h4><p>Salesforce login uses the OAuth Client Credentials flow — an app identity, not a person's password.</p></div>
+        </div>
+      </section>
+
+      <hr class="divider">
+
+      <!-- HOW -->
+      <section id="how">
+        <h2>How it works</h2>
+        <p class="section-sub">Two automated workflows do all the work. One guards Pull Requests; the other deploys on merge.</p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+    Dev([👩‍💻 Developer]) -->|"git push"| FB[feature branch]
+    FB -->|"open Pull Request"| PR{{Pull Request}}
+    PR --> V[["PR Validation workflow"]]
+    V --> Q["Quality gates<br/>Prettier · ESLint · Jest"]
+    V --> CO["Check-only validation<br/>(dry-run against org)"]
+    Q --> G{All checks green?}
+    CO --> G
+    G -->|no| Fix["Fix &amp; push again"]
+    Fix --> V
+    G -->|yes| RV{Reviewer approves?}
+    RV -->|no| BL["🔒 Blocked — cannot merge"]
+    RV -->|yes| M["Merge Pull Request"]
+    M --> D[["Deploy workflow"]]
+    D --> ORG[("☁️ Salesforce org")]
+          </pre>
+        </div>
+        <p class="cap">The full journey of a change — from a developer's keyboard to the org.</p>
+        <p>The magic word is <strong>delta</strong>: instead of deploying your whole project every time, a tool called
+          <code>sfdx-git-delta</code> looks at what changed in git and deploys only those files. Faster, safer, and it
+          even handles deletions.</p>
+      </section>
+
+      <hr class="divider">
+
+      <!-- BRANCHES -->
+      <section id="branches">
+        <h2>The branch strategy</h2>
+        <p class="section-sub">Four long-lived branches, each mapped to one Salesforce environment. Code is promoted
+          upward, one reviewed step at a time.</p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart LR
+    F["feature/*"] --> QA[qa]
+    QA --> UAT[uat]
+    UAT --> PP[preprod]
+    PP --> MAIN[main]
+    QA -. deploys to .-> QAO[("QA org")]
+    UAT -. deploys to .-> UATO[("UAT org")]
+    PP -. deploys to .-> PPO[("Pre-Prod org")]
+    MAIN -. deploys to .-> PRODO[("Production")]
+          </pre>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Branch</th><th>GitHub environment</th><th>Deploys to</th><th>Login URL</th></tr></thead>
+            <tbody>
+              <tr><td><code>qa</code></td><td class="mono">qa</td><td>QA sandbox</td><td class="mono">test.salesforce.com</td></tr>
+              <tr><td><code>uat</code></td><td class="mono">uat</td><td>UAT sandbox</td><td class="mono">test.salesforce.com</td></tr>
+              <tr><td><code>preprod</code></td><td class="mono">preprod</td><td>Pre-Prod sandbox</td><td class="mono">test.salesforce.com</td></tr>
+              <tr><td><code>main</code></td><td class="mono">production</td><td>Production</td><td class="mono">login.salesforce.com</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note tip"><span class="lbl">Tip</span> Starting out, you can point all four environments at the
+          <em>same</em> org. Because each environment has its own secrets, splitting them onto real separate orgs later
+          is just a matter of updating those secrets — no workflow changes.</div>
+      </section>
+
+      <hr class="divider">
+
+      <!-- BEFORE -->
+      <section id="before">
+        <h2>Before you start</h2>
+        <p class="section-sub">A short checklist of accounts and access. Gather these and the rest goes smoothly.</p>
+        <div class="cards">
+          <div class="card"><h4>A GitHub account</h4><p>Free is fine. Branch protection needs a <b>public</b> repo on the free plan (or GitHub Pro for private).</p></div>
+          <div class="card"><h4>A Salesforce org</h4><p>Any org where you're an admin — a Developer Edition org works great for learning.</p></div>
+          <div class="card"><h4>A second reviewer</h4><p>GitHub won't let you approve your own PR. You need one more collaborator to click "Approve".</p></div>
+          <div class="card"><h4>15 minutes</h4><p>That's genuinely all the first-time setup takes once the accounts exist.</p></div>
+        </div>
+      </section>
+
+      <hr class="divider">
+
+      <!-- STEP 1 -->
+      <section id="s1">
+        <h2><span class="num">Step 1</span> Install the tools</h2>
+        <p class="section-sub">Five command-line tools. Install once, forget forever.</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Tool</th><th>What it's for</th><th>Get it</th></tr></thead>
+            <tbody>
+              <tr><td><b>Git</b></td><td>Version control</td><td class="mono">git-scm.com</td></tr>
+              <tr><td><b>Node.js 22</b></td><td>Runs the JS tooling &amp; Salesforce CLI</td><td class="mono">nodejs.org</td></tr>
+              <tr><td><b>Salesforce CLI</b></td><td>Talks to your org</td><td class="mono">npm i -g @salesforce/cli</td></tr>
+              <tr><td><b>GitHub CLI</b></td><td>Creates repo, secrets, protection</td><td class="mono">cli.github.com</td></tr>
+              <tr><td><b>VS Code</b></td><td>Editor (optional but recommended)</td><td class="mono">code.visualstudio.com</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Verify everything is installed:</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name">terminal</span><button class="copy">Copy</button></div>
+          <pre><code>git --version
+node --version   <span class="cmt"># must be v22.x</span>
+sf version
+gh --version</code></pre>
+        </div>
+        <div class="note warn"><span class="lbl">Why Node 22</span> The current Salesforce CLI does not run on Node 20 —
+          it crashes with <code>markAsUncloneable is not a function</code>. Node 22 is required both on your machine and
+          in the pipeline.</div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section id="s2">
+        <h2><span class="num">Step 2</span> Create the repo &amp; branches</h2>
+        <p class="section-sub">Turn your project folder into a GitHub repository and create the four branches.</p>
+        <p>From inside your Salesforce project folder, sign in to GitHub once, then create and push the repo:</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name">terminal</span><button class="copy">Copy</button></div>
+          <pre><code><span class="cmt"># one-time sign-in (opens your browser)</span>
+gh auth login
+
+<span class="cmt"># turn the folder into a git repo</span>
+git init &amp;&amp; git branch -M main
+git add . &amp;&amp; git commit -m <span class="str">"Initial commit"</span>
+
+<span class="cmt"># create the GitHub repo and push main</span>
+gh repo create Salesforce-Learning-Projects-Rep --public --source . --push
+
+<span class="cmt"># create the other three branches from main</span>
+git branch preprod &amp;&amp; git branch uat &amp;&amp; git branch qa
+git push origin preprod uat qa</code></pre>
+        </div>
+        <div class="note tip"><span class="lbl">Public vs private</span> On the free plan, branch-protection rules only
+          work on <b>public</b> repos. Your secrets are never in the code — they live in GitHub's encrypted store — so a
+          learning repo is safe to make public. For private + protection, upgrade to GitHub Pro.</div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section id="s3">
+        <h2><span class="num">Step 3</span> Set up the Salesforce app</h2>
+        <p class="section-sub">The pipeline logs in as an <em>app</em>, not a person, using the OAuth Client Credentials
+          flow. You configure this once in your org.</p>
+        <ol>
+          <li><strong>Deploy My Domain.</strong> Setup → <em>My Domain</em> → make sure it's <em>Deployed to Users</em>.
+            Copy the URL — you'll need it (looks like <code>https://your-name.my.salesforce.com</code>).</li>
+          <li><strong>Create an External Client App</strong> (or Connected App) with OAuth enabled. Scopes must include
+            <code>Manage user data via APIs (api)</code> and <code>Perform requests at any time</code>.</li>
+          <li><strong>Turn on the Client Credentials Flow</strong> for the app.</li>
+          <li><strong>Set the "Run As" user.</strong> This is the crucial one — the app acts as this user.</li>
+          <li><strong>Relax IP restrictions</strong> (CI servers have changing IP addresses). Save and wait ~2–10 min.</li>
+          <li>Copy the <strong>Consumer Key</strong> and <strong>Consumer Secret</strong> — these become two secrets.</li>
+        </ol>
+        <div class="note warn"><span class="lbl">Read this or you'll get stuck</span> The "Run As" user needs real
+          deploy permissions. A locked-down or "Salesforce Integration"-license user fails with
+          <code>sObject type 'Organization' is not supported</code> during deployment. Give that user the
+          <b>System Administrator</b> profile, or a permission set with <b>Modify Metadata Through Metadata API
+          Functions</b> + <b>API Enabled</b>.</div>
+        <p>Verify the login works before touching CI — this should return an <code>access_token</code>:</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name">terminal &mdash; test the app login</span><button class="copy">Copy</button></div>
+          <pre><code>curl -s -X POST <span class="str">"https://YOUR-DOMAIN.my.salesforce.com/services/oauth2/token"</span> \
+  --data-urlencode <span class="str">"grant_type=client_credentials"</span> \
+  --data-urlencode <span class="str">"client_id=YOUR_CONSUMER_KEY"</span> \
+  --data-urlencode <span class="str">"client_secret=YOUR_CONSUMER_SECRET"</span></code></pre>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section id="s4">
+        <h2><span class="num">Step 4</span> Add environments &amp; secrets</h2>
+        <p class="section-sub">Each branch deploys through a GitHub "environment" that holds its own secret values.</p>
+        <p>Create four environments (<code>qa</code>, <code>uat</code>, <code>preprod</code>, <code>production</code>),
+          then add these three secrets to each:</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Secret name</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td><code>SF_CLIENT_ID</code></td><td>The app's Consumer Key</td></tr>
+              <tr><td><code>SF_CLIENT_SECRET</code></td><td>The app's Consumer Secret</td></tr>
+              <tr><td><code>SF_INSTANCE_URL</code></td><td>Your <b>My Domain</b> URL (not login/test.salesforce.com)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The GitHub CLI makes this quick and keeps secrets off your screen:</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name">terminal</span><button class="copy">Copy</button></div>
+          <pre><code>REPO=<span class="str">"YourName/Salesforce-Learning-Projects-Rep"</span>
+<span class="cmt"># repeat per environment: qa, uat, preprod, production</span>
+gh api -X PUT <span class="str">"repos/$REPO/environments/qa"</span>
+
+gh secret set SF_CLIENT_ID     --env qa --repo <span class="str">"$REPO"</span>
+gh secret set SF_CLIENT_SECRET --env qa --repo <span class="str">"$REPO"</span>
+gh secret set SF_INSTANCE_URL  --env qa --repo <span class="str">"$REPO"</span> \
+  --body <span class="str">"https://YOUR-DOMAIN.my.salesforce.com"</span></code></pre>
+        </div>
+        <div class="note ok"><span class="lbl">Why environments</span> Secrets scoped to an environment mean the same
+          workflow line, <code>${{ secrets.SF_CLIENT_ID }}</code>, automatically pulls the right org's values depending
+          on which branch is deploying.</div>
+      </section>
+
+      <!-- STEP 5 -->
+      <section id="s5">
+        <h2><span class="num">Step 5</span> Add the pipeline files</h2>
+        <p class="section-sub">Three files under <code>.github/</code> define the whole pipeline. They're covered
+          line-by-line <a href="#yaml">below</a> — here's where they live.</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>File</th><th>Job</th></tr></thead>
+            <tbody>
+              <tr><td><code>.github/actions/setup-sfdx/action.yml</code></td><td>Shared setup: Node, Salesforce CLI, delta tool, and login</td></tr>
+              <tr><td><code>.github/workflows/pr-validation.yml</code></td><td>Runs on every PR — quality gates + check-only validation</td></tr>
+              <tr><td><code>.github/workflows/deploy.yml</code></td><td>Runs on merge — deploys the delta to the matching org</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>You also need a <code>package.json</code> with these scripts (the workflows call them):</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name"><b>package.json</b> &mdash; the scripts block</span><button class="copy">Copy</button></div>
+          <pre><code><span class="str">"scripts"</span>: {
+  <span class="str">"lint"</span>: <span class="str">"eslint --no-error-on-unmatched-pattern \"**/{aura,lwc}/**/*.js\""</span>,
+  <span class="str">"prettier:verify"</span>: <span class="str">"prettier --check \"**/*.{cls,js,html,xml,json,md,yml}\""</span>,
+  <span class="str">"test:unit:coverage"</span>: <span class="str">"sfdx-lwc-jest --coverage --passWithNoTests"</span>
+}</code></pre>
+        </div>
+        <div class="note warn"><span class="lbl">Don't forget the lock file</span> Commit <code>package-lock.json</code>
+          (run <code>npm install</code> once to create it). The pipeline uses <code>npm ci</code>, which refuses to run
+          without it.</div>
+      </section>
+
+      <!-- STEP 6 -->
+      <section id="s6">
+        <h2><span class="num">Step 6</span> Lock the branches</h2>
+        <p class="section-sub">A single "ruleset" enforces your three rules on all four branches: no direct commits,
+          checks must pass, a reviewer must approve.</p>
+        <p>Save this as <code>.github/rulesets/protect-release-branches.json</code> and apply it with one command:</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name">terminal</span><button class="copy">Copy</button></div>
+          <pre><code>gh api -X POST <span class="str">"repos/$REPO/rulesets"</span> \
+  --input .github/rulesets/protect-release-branches.json</code></pre>
+        </div>
+        <p>The rules, in plain English:</p>
+        <div class="cards">
+          <div class="card"><h4>🚫 No direct commits</h4><p>Every change must arrive via a Pull Request.</p></div>
+          <div class="card"><h4>✅ Checks required</h4><p><span class="mono">Check-only Validation</span> and <span class="mono">Lint, Format &amp; Jest</span> must be green.</p></div>
+          <div class="card"><h4>👤 Approval required</h4><p>At least one reviewer must approve; stale approvals drop on new commits.</p></div>
+          <div class="card"><h4>🔒 No force-push / delete</h4><p>Protected branches can't be force-pushed or deleted. Applies to everyone.</p></div>
+        </div>
+        <div class="note tip"><span class="lbl">Add a reviewer</span> Since you can't approve your own PR, invite one
+          collaborator with write access: <code>gh api -X PUT "repos/$REPO/collaborators/THEIR_USERNAME" -f permission=push</code>.
+          They accept the emailed invite, and then they can approve.</div>
+      </section>
+
+      <!-- STEP 7 -->
+      <section id="s7">
+        <h2><span class="num">Step 7</span> Try it out</h2>
+        <p class="section-sub">Open your first Pull Request and watch the pipeline light up.</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name">terminal</span><button class="copy">Copy</button></div>
+          <pre><code>git checkout -b feature/first-change qa
+<span class="cmt"># make a small edit under force-app/ ...</span>
+git commit -am <span class="str">"test: my first pipeline run"</span>
+git push -u origin feature/first-change
+
+<span class="cmt"># open a Pull Request into qa</span>
+gh pr create --base qa --title <span class="str">"My first change"</span></code></pre>
+        </div>
+        <p>On the PR you'll see the checks run. When they pass, the PR is still <span class="pill r">BLOCKED</span> until
+          your reviewer approves — that's the safety working. After approval, merge it, and the Deploy workflow pushes
+          your change to the org. 🎉</p>
+      </section>
+
+      <hr class="divider">
+
+      <!-- YAML EXPLAINED -->
+      <section id="yaml">
+        <h2>The YAML files, explained</h2>
+        <p class="section-sub">YAML is just a structured list of instructions. Indentation shows what belongs to what.
+          Here's each file in full, followed by a plain-English breakdown.</p>
+
+        <h3>A · The shared setup action</h3>
+        <p>This is a reusable block both workflows call. It installs everything and logs into Salesforce, so the login
+          logic lives in exactly one place.</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name"><b>.github/actions/setup-sfdx/action.yml</b></span><button class="copy">Copy</button></div>
+          <pre><code>name: <span class="str">"Setup SFDX + Auth (Client Credentials)"</span>
+inputs:                          <span class="cmt"># values the caller passes in</span>
+  client-id:     { required: true }
+  client-secret: { required: true }
+  instance-url:  { required: true }
+  alias:         { default: <span class="str">"targetOrg"</span> }
+
+runs:
+  using: <span class="str">"composite"</span>              <span class="cmt"># a reusable bundle of steps</span>
+  steps:
+    - uses: actions/setup-node@v4
+      with: { node-version: <span class="str">"22"</span>, cache: <span class="str">"npm"</span> }   <span class="cmt"># Node 22 — required!</span>
+
+    - shell: bash
+      run: npm ci                <span class="cmt"># install project dependencies</span>
+
+    - shell: bash                <span class="cmt"># install Salesforce CLI + the delta plugin</span>
+      run: |
+        npm install --global @salesforce/cli@latest
+        echo "y" | sf plugins install sfdx-git-delta
+
+    - shell: bash                <span class="cmt"># log in with the app identity</span>
+      env:
+        CC_CLIENT_ID:     ${{ inputs.client-id }}
+        CC_CLIENT_SECRET: ${{ inputs.client-secret }}
+        CC_INSTANCE_URL:  ${{ inputs.instance-url }}
+      run: |
+        RESP=$(curl -s -X POST "${CC_INSTANCE_URL}/services/oauth2/token" \
+          --data-urlencode "grant_type=client_credentials" \
+          --data-urlencode "client_id=${CC_CLIENT_ID}" \
+          --data-urlencode "client_secret=${CC_CLIENT_SECRET}")
+        export SF_ACCESS_TOKEN=$(echo "$RESP" | jq -r '.access_token')
+        sf org login access-token --instance-url "$CC_INSTANCE_URL" \
+          --alias "${{ inputs.alias }}" --set-default --no-prompt</code></pre>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">inputs</td><td>The three secrets + an alias the workflow hands to this action.</td></tr>
+            <tr><td class="mono">using: composite</td><td>Marks it a reusable set of steps you can drop into any job.</td></tr>
+            <tr><td class="mono">setup-node · v22</td><td>Installs Node 22 and caches npm downloads for speed.</td></tr>
+            <tr><td class="mono">npm ci</td><td>Installs exactly the dependencies from <code>package-lock.json</code>.</td></tr>
+            <tr><td class="mono">curl … /oauth2/token</td><td>Exchanges the app's key + secret for a temporary access token.</td></tr>
+            <tr><td class="mono">sf org login access-token</td><td>Hands that token to the Salesforce CLI so later steps can deploy.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>B · The PR validation workflow</h3>
+        <p>Runs on every Pull Request into a protected branch. It never deploys — it only checks.</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name"><b>.github/workflows/pr-validation.yml</b></span><button class="copy">Copy</button></div>
+          <pre><code>name: PR Validation
+on:                              <span class="cmt"># when does this run?</span>
+  pull_request:
+    branches: [main, preprod, uat, qa]
+
+jobs:
+  resolve-env:                   <span class="cmt"># which environment does the target branch map to?</span>
+    runs-on: ubuntu-latest
+    outputs: { environment: ${{ steps.map.outputs.environment }} }
+    steps:
+      - id: map
+        run: |
+          case "${{ github.base_ref }}" in
+            qa)      echo "environment=qa"         &gt;&gt; "$GITHUB_OUTPUT" ;;
+            uat)     echo "environment=uat"        &gt;&gt; "$GITHUB_OUTPUT" ;;
+            preprod) echo "environment=preprod"    &gt;&gt; "$GITHUB_OUTPUT" ;;
+            main)    echo "environment=production" &gt;&gt; "$GITHUB_OUTPUT" ;;
+          esac
+
+  quality:                       <span class="cmt"># the formatting / lint / test gate</span>
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: "npm" }
+      - run: npm ci
+      - run: npm run prettier:verify
+      - run: npm run lint
+      - run: npm run test:unit:coverage
+
+  validate:                      <span class="cmt"># the Salesforce dry-run gate</span>
+    needs: [resolve-env, quality]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }         <span class="cmt"># full history — needed for the delta</span>
+      - uses: ./.github/actions/setup-sfdx
+        with:
+          client-id:     ${{ secrets.SF_CLIENT_ID }}
+          client-secret: ${{ secrets.SF_CLIENT_SECRET }}
+          instance-url:  ${{ secrets.SF_INSTANCE_URL }}
+      - run: |                           <span class="cmt"># build the delta package</span>
+          sf sgd source delta --to HEAD --from "origin/${{ github.base_ref }}" \
+            --output-dir delta --generate-delta --source-dir force-app
+      - run: |                           <span class="cmt"># validate additions (nothing is deployed)</span>
+          sf project deploy validate --manifest delta/package/package.xml \
+            --test-level RunLocalTests --wait 60</code></pre>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">on: pull_request</td><td>Triggers whenever a PR targets one of the four branches.</td></tr>
+            <tr><td class="mono">resolve-env</td><td>Reads the target branch and picks the matching environment (so the right org's secrets load).</td></tr>
+            <tr><td class="mono">quality</td><td>Runs Prettier, ESLint, and Jest. This is the <b>Lint, Format &amp; Jest</b> required check.</td></tr>
+            <tr><td class="mono">validate · needs</td><td>Waits for <code>quality</code> to pass first, then runs the Salesforce check. This is the <b>Check-only Validation</b> required check.</td></tr>
+            <tr><td class="mono">fetch-depth: 0</td><td>Grabs full git history so the delta tool can compare branches.</td></tr>
+            <tr><td class="mono">sf sgd source delta</td><td>Computes exactly what changed vs. the target branch.</td></tr>
+            <tr><td class="mono">deploy validate</td><td>Asks Salesforce "would this deploy succeed?" without actually deploying.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>C · The deploy workflow</h3>
+        <p>Runs when a PR is merged (a push to a protected branch). This one <em>does</em> deploy.</p>
+        <div class="code">
+          <div class="code-bar"><span class="code-name"><b>.github/workflows/deploy.yml</b></span><button class="copy">Copy</button></div>
+          <pre><code>name: Deploy
+on:
+  push:                          <span class="cmt"># fires when a merge lands on one of these branches</span>
+    branches: [main, preprod, uat, qa]
+    paths: ["force-app/**", "manifest/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: ./.github/actions/setup-sfdx
+        with:
+          client-id:     ${{ secrets.SF_CLIENT_ID }}
+          client-secret: ${{ secrets.SF_CLIENT_SECRET }}
+          instance-url:  ${{ secrets.SF_INSTANCE_URL }}
+      - run: |                           <span class="cmt"># delta between this commit and the one before it</span>
+          sf sgd source delta --to HEAD --from "HEAD~1" \
+            --output-dir delta --generate-delta --source-dir force-app
+      - run: |                           <span class="cmt"># deploy the changed metadata</span>
+          sf project deploy start --manifest delta/package/package.xml \
+            --test-level RunLocalTests --wait 60
+      - run: |                           <span class="cmt"># apply deletions, if any</span>
+          if grep -q "&lt;types&gt;" delta/destructiveChanges/destructiveChanges.xml; then
+            sf project deploy start \
+              --manifest delta/destructiveChanges/package.xml \
+              --post-destructive-changes delta/destructiveChanges/destructiveChanges.xml \
+              --wait 60
+          fi</code></pre>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">on: push</td><td>Runs after a merge lands on a protected branch.</td></tr>
+            <tr><td class="mono">paths:</td><td>Only bothers running when Salesforce metadata actually changed.</td></tr>
+            <tr><td class="mono">--from HEAD~1</td><td>Compares the merge commit to the one before it to find the delta.</td></tr>
+            <tr><td class="mono">deploy start</td><td>The real deployment — pushes changed metadata to the org.</td></tr>
+            <tr><td class="mono">post-destructive-changes</td><td>Removes files you deleted from the org. Note it uses an empty <code>package.xml</code> + the destructive manifest.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note warn"><span class="lbl">Common gotcha</span> Destructive deletes need
+          <code>--manifest &lt;empty package.xml&gt; --post-destructive-changes …</code>. Using <code>--metadata-dir</code>
+          here silently does nothing — a bug worth checking in your own copy.</div>
+      </section>
+
+      <hr class="divider">
+
+      <!-- DAILY -->
+      <section id="daily">
+        <h2>Your day-to-day flow</h2>
+        <p class="section-sub">Once it's set up, every change follows the same short loop.</p>
+        <div class="diagram">
+          <pre class="mermaid">
+sequenceDiagram
+    actor Dev as Developer
+    participant GH as GitHub
+    participant CI as GitHub Actions
+    participant Org as Salesforce
+    actor Rev as Reviewer
+    Dev->>GH: Open Pull Request
+    GH->>CI: Trigger PR Validation
+    CI->>CI: Prettier · ESLint · Jest
+    CI->>Org: Check-only validate (delta)
+    Org-->>CI: Valid ✓
+    CI-->>GH: Checks green
+    Rev->>GH: Approve
+    Dev->>GH: Merge
+    GH->>CI: Trigger Deploy
+    CI->>Org: Deploy delta
+    Org-->>CI: Success ✓
+          </pre>
+        </div>
+        <ol>
+          <li>Branch off the target (e.g. <code>git checkout -b feature/x qa</code>).</li>
+          <li>Make your change, commit, and push.</li>
+          <li>Open a Pull Request. The checks run automatically.</li>
+          <li>A teammate reviews and approves.</li>
+          <li>Merge — the deploy happens on its own.</li>
+        </ol>
+      </section>
+
+      <hr class="divider">
+
+      <!-- TROUBLE -->
+      <section id="trouble">
+        <h2>Troubleshooting</h2>
+        <p class="section-sub">Every real error we hit setting this up, and the fix. If the pipeline goes red, start here.</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Message you see</th><th>Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">markAsUncloneable is not a function</td><td>Salesforce CLI on Node 20</td><td>Use <code>node-version: "22"</code> everywhere</td></tr>
+              <tr><td class="mono">sObject type 'Organization' is not supported</td><td>Run-As user lacks deploy permissions</td><td>Give it System Administrator, or Modify Metadata + API Enabled</td></tr>
+              <tr><td class="mono">Code style issues found</td><td>Files aren't formatted</td><td>Run <code>npm run prettier</code> and commit</td></tr>
+              <tr><td class="mono">all files matching the glob … are ignored</td><td>ESLint found no files</td><td>Add <code>--no-error-on-unmatched-pattern</code></td></tr>
+              <tr><td class="mono">No tests found, exiting with code 1</td><td>Jest found no tests</td><td>Add <code>--passWithNoTests</code></td></tr>
+              <tr><td class="mono">npm ci … no package-lock.json</td><td>Lock file not committed</td><td>Run <code>npm install</code>, commit the lock file</td></tr>
+              <tr><td class="mono">invalid_client / invalid_grant</td><td>Wrong key/secret or app not ready</td><td>Recheck secrets; wait 10 min after app changes</td></tr>
+              <tr><td><span class="pill a">BEHIND</span> can't merge</td><td>Branch out of date (strict checks)</td><td>Update branch: <code>gh pr update-branch &lt;n&gt;</code></td></tr>
+              <tr><td>Can't approve your own PR</td><td>GitHub rule</td><td>Add a second collaborator as reviewer</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr class="divider">
+
+      <!-- GLOSSARY -->
+      <section id="glossary">
+        <h2>Glossary</h2>
+        <p class="section-sub">The jargon, decoded.</p>
+        <div class="tbl-wrap">
+          <table>
+            <tbody>
+              <tr><td><b>CI/CD</b></td><td>Continuous Integration / Continuous Deployment — automating checks and releases.</td></tr>
+              <tr><td><b>Pull Request (PR)</b></td><td>A request to merge your changes, where checks run and people review.</td></tr>
+              <tr><td><b>Branch protection / ruleset</b></td><td>Rules GitHub enforces on a branch (no direct commits, required checks, approvals).</td></tr>
+              <tr><td><b>Workflow</b></td><td>An automated job defined in a YAML file, run by GitHub Actions.</td></tr>
+              <tr><td><b>Delta</b></td><td>Only the files that changed — deployed instead of the whole project.</td></tr>
+              <tr><td><b>Client Credentials flow</b></td><td>Logging in as an app identity (run-as user), no human password.</td></tr>
+              <tr><td><b>My Domain</b></td><td>Your org's custom URL — required for the Client Credentials login.</td></tr>
+              <tr><td><b>Check-only validation</b></td><td>A deploy dry-run: "would this work?" without changing the org.</td></tr>
+              <tr><td><b>Secret</b></td><td>An encrypted value (like a key) stored in GitHub, never in your code.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        Salesforce → GitHub Actions CI/CD setup guide · Client Credentials auth · delta deployments · Node 22.
+        Every step here was verified end-to-end against a live org.
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+  // copy buttons
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.closest('.code').querySelector('pre');
+      var text = pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        var old = btn.textContent; btn.textContent = 'Copied ✓';
+        setTimeout(function () { btn.textContent = old; }, 1400);
+      });
+    });
+  });
+  // active TOC highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        links.forEach(function (l) { l.classList.remove('active'); });
+        if (map[e.target.id]) map[e.target.id].classList.add('active');
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+  document.querySelectorAll('section[id]').forEach(function (s) { obs.observe(s); });
+</script>
