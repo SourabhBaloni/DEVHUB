@@ -1,6 +1,7 @@
 name: PR Validation
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: [QA]
     paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
 
@@ -33,29 +34,120 @@ jobs:
       - run: npm run test:unit:coverage
 
   validate:
-    name: Check-only Validation
+    name: Analyzer + Check-only Validation
     needs: [resolve-env, quality]
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-env.outputs.environment }}
+    env:
+      MIN_TEST_COVERAGE: ${{ vars.MIN_TEST_COVERAGE || '75' }}
+      JOB_DEBUG: ${{ vars.JOB_DEBUG || 'false' }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+      - name: Configure git safe.directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Fetch base branch
+        run: git fetch origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
       - uses: ./.github/actions/setup-sfdx
         with:
           client-id: ${{ secrets.SF_CLIENT_ID }}
           jwt-key: ${{ secrets.SF_JWT_KEY }}
           username: ${{ secrets.SF_USERNAME }}
           instance-url: ${{ secrets.SF_INSTANCE_URL }}
-      - name: Generate delta
+          alias: targetOrg
+      - name: Generate delta (merge-base)
         run: |
           mkdir -p delta
-          sf sgd source delta --to HEAD --from "origin/${{ github.base_ref }}" \
-            --output-dir delta --generate-delta --source-dir force-app
+          BASE=$(git merge-base HEAD "origin/${{ github.base_ref }}")
+          echo "Delta base: $BASE"
+          sf sgd source delta --from "$BASE" --to HEAD \
+            --output-dir delta --generate-delta --source-dir force-app || true
+      - name: Salesforce Code Analyzer (delta)
+        env:
+          ANALYZER_CONFIG: ${{ vars.ANALYZER_CONFIG || 'true:0:1,2' }}
+        run: |
+          ENABLED=$(printf '%s' "$ANALYZER_CONFIG" | cut -d: -f1)
+          THRESH=$(printf '%s' "$ANALYZER_CONFIG" | cut -d: -f2)
+          SEVS=$(printf '%s' "$ANALYZER_CONFIG" | cut -d: -f3 | tr ',' ' ')
+          if [ "$ENABLED" != "true" ]; then echo "Code Analyzer disabled"; exit 0; fi
+          if [ ! -d delta/force-app ]; then echo "No delta to scan"; exit 0; fi
+          echo y | sf plugins install code-analyzer@latest || true
+          sf code-analyzer run --target delta/force-app --rule-selector Recommended \
+            --output-file ca.json || true
+          [ -s ca.json ] || echo '{"violationCounts":{}}' > ca.json
+          TOTAL=0
+          for s in $SEVS; do
+            C=$(jq -r ".violationCounts.sev$s // 0" ca.json 2>/dev/null || echo 0)
+            TOTAL=$((TOTAL + C))
+          done
+          echo "Blocking violations (sev: $SEVS): $TOTAL  (max allowed: $THRESH)"
+          if [ "$TOTAL" -gt "$THRESH" ]; then echo "Code Analyzer threshold exceeded"; exit 1; fi
+          echo "Code Analyzer passed"
+      - name: Upload analyzer result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-analyzer-${{ github.run_id }}
+          path: ca.json
+          if-no-files-found: ignore
+      - name: Determine Apex test level
+        id: tests
+        env:
+          TEST_SOURCE: ${{ github.event.pull_request.body }}
+        run: |
+          OVERRIDE=$(printf '%s' "$TEST_SOURCE" | sed -n 's/.*Apex::\[\(.*\)\]::Apex.*/\1/p' | head -1)
+          LEVEL=""; ARG=""
+          if [ -n "$OVERRIDE" ]; then
+            if printf '%s' "$OVERRIDE" | grep -qiE '^[[:space:]]*all[[:space:]]*$'; then
+              LEVEL="RunLocalTests"
+            else
+              LEVEL="RunSpecifiedTests"
+              ARG=$(printf '%s' "$OVERRIDE" | tr -d ' ' | tr ',' ' ')
+            fi
+          elif find delta -name '*.cls' -o -name '*.trigger' 2>/dev/null | grep -q .; then
+            if [ "${MIN_TEST_COVERAGE:-75}" != "0" ]; then LEVEL="RunLocalTests"; fi
+          fi
+          echo "level=$LEVEL" >> "$GITHUB_OUTPUT"
+          echo "arg=$ARG"     >> "$GITHUB_OUTPUT"
+          echo "Test level: ${LEVEL:-none}  tests: ${ARG:-n/a}"
       - name: Check-only validate
         run: |
-          if grep -q "<types>" delta/package/package.xml; then
-            sf project deploy validate --manifest delta/package/package.xml \
-              --test-level RunLocalTests --wait 60
-          else
-            echo "No deployable metadata changes."
+          if ! grep -q "<types>" delta/package/package.xml 2>/dev/null; then
+            echo "No deployable metadata changes."; exit 0
           fi
+          ARGS="--manifest delta/package/package.xml"
+          if [ "${{ steps.tests.outputs.level }}" = "RunSpecifiedTests" ]; then
+            ARGS="$ARGS --test-level RunSpecifiedTests --tests ${{ steps.tests.outputs.arg }}"
+          elif [ -n "${{ steps.tests.outputs.level }}" ]; then
+            ARGS="$ARGS --test-level ${{ steps.tests.outputs.level }}"
+          fi
+          echo "sf project deploy validate $ARGS"
+          sf project deploy validate $ARGS --target-org targetOrg --wait 60 --json > validate_result.json \
+            || (cat validate_result.json; exit 1)
+      - name: Coverage check (changed Apex classes)
+        if: ${{ env.MIN_TEST_COVERAGE != '0' }}
+        run: |
+          MIN="$MIN_TEST_COVERAGE"
+          [ -f validate_result.json ] || { echo "No result JSON — skipping coverage check"; exit 0; }
+          jq -e '.result.details.runTestResult' validate_result.json >/dev/null 2>&1 \
+            || { echo "No test results in JSON — skipping"; exit 0; }
+          CLASSES=$(find delta -name '*.cls' ! -name '*Test.cls' -exec basename {} .cls \; 2>/dev/null | tr '\n' ' ')
+          [ -n "$CLASSES" ] || { echo "No changed classes — skipping"; exit 0; }
+          for c in $CLASSES; do
+            cov=$(jq -r --arg c "$c" '.result.details.runTestResult.codeCoverage[]? | select(.name==$c) | if .numLocations==0 then 100 else ((.numLocations - .numLocationsNotCovered)/.numLocations*100) end' validate_result.json 2>/dev/null)
+            { [ -n "$cov" ] && [ "$cov" != "null" ]; } || cov=0
+            covi=$(printf "%.0f" "$cov")
+            echo "Class $c: ${covi}%  (required >= ${MIN}%)"
+            if [ "$covi" -lt "$MIN" ]; then echo "Coverage for $c below ${MIN}%"; exit 1; fi
+          done
+          echo "All changed classes meet >= ${MIN}% coverage"
+      - name: Upload validation result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-result-${{ github.run_id }}
+          path: validate_result.json
+          if-no-files-found: ignore
+      - name: Cleanup
+        if: always()
+        run: sf org logout --target-org targetOrg --no-prompt || true

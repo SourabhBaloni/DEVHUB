@@ -25,25 +25,79 @@ jobs:
     needs: resolve-env
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-env.outputs.environment }}
+    env:
+      MIN_TEST_COVERAGE: ${{ vars.MIN_TEST_COVERAGE || '75' }}
+      JOB_DEBUG: ${{ vars.JOB_DEBUG || 'false' }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+      - name: Configure git safe.directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: ./.github/actions/setup-sfdx
         with:
           client-id: ${{ secrets.SF_CLIENT_ID }}
           jwt-key: ${{ secrets.SF_JWT_KEY }}
           username: ${{ secrets.SF_USERNAME }}
           instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          alias: targetOrg
       - name: Generate delta
         run: |
           mkdir -p delta
-          sf sgd source delta --to HEAD --from "HEAD~1" \
-            --output-dir delta --generate-delta --source-dir force-app
+          sf sgd source delta --from "HEAD~1" --to HEAD \
+            --output-dir delta --generate-delta --source-dir force-app || true
+      - name: Determine Apex test level
+        id: tests
+        env:
+          TEST_SOURCE: ${{ github.event.head_commit.message }}
+        run: |
+          OVERRIDE=$(printf '%s' "$TEST_SOURCE" | sed -n 's/.*Apex::\[\(.*\)\]::Apex.*/\1/p' | head -1)
+          LEVEL=""; ARG=""
+          if [ -n "$OVERRIDE" ]; then
+            if printf '%s' "$OVERRIDE" | grep -qiE '^[[:space:]]*all[[:space:]]*$'; then
+              LEVEL="RunLocalTests"
+            else
+              LEVEL="RunSpecifiedTests"
+              ARG=$(printf '%s' "$OVERRIDE" | tr -d ' ' | tr ',' ' ')
+            fi
+          elif find delta -name '*.cls' -o -name '*.trigger' 2>/dev/null | grep -q .; then
+            if [ "${MIN_TEST_COVERAGE:-75}" != "0" ]; then LEVEL="RunLocalTests"; fi
+          fi
+          echo "level=$LEVEL" >> "$GITHUB_OUTPUT"
+          echo "arg=$ARG"     >> "$GITHUB_OUTPUT"
+          echo "Test level: ${LEVEL:-none}  tests: ${ARG:-n/a}"
       - name: Deploy delta
         run: |
-          if grep -q "<types>" delta/package/package.xml; then
-            sf project deploy start --manifest delta/package/package.xml \
-              --test-level RunLocalTests --wait 60
-          else
-            echo "No deployable metadata changes."
+          if ! grep -q "<types>" delta/package/package.xml 2>/dev/null; then
+            echo "No deployable metadata changes."; exit 0
           fi
+          ARGS="--manifest delta/package/package.xml"
+          if [ "${{ steps.tests.outputs.level }}" = "RunSpecifiedTests" ]; then
+            ARGS="$ARGS --test-level RunSpecifiedTests --tests ${{ steps.tests.outputs.arg }}"
+          elif [ -n "${{ steps.tests.outputs.level }}" ]; then
+            ARGS="$ARGS --test-level ${{ steps.tests.outputs.level }}"
+          fi
+          echo "sf project deploy start $ARGS"
+          sf project deploy start $ARGS --target-org targetOrg --wait 60 --json > deploy_result.json \
+            || (cat deploy_result.json; exit 1)
+      - name: Apply destructive changes (deletions)
+        run: |
+          DXML=delta/destructiveChanges/destructiveChanges.xml
+          if [ -f "$DXML" ] && grep -q "<types>" "$DXML"; then
+            echo "Applying destructive changes (deleted metadata)…"
+            sf project deploy start \
+              --manifest delta/destructiveChanges/package.xml \
+              --post-destructive-changes "$DXML" \
+              --target-org targetOrg --wait 60
+          else
+            echo "No destructive changes."
+          fi
+      - name: Upload deploy result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-result-${{ github.run_id }}
+          path: deploy_result.json
+          if-no-files-found: ignore
+      - name: Cleanup
+        if: always()
+        run: sf org logout --target-org targetOrg --no-prompt || true
