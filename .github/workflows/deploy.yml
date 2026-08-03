@@ -67,7 +67,7 @@ jobs:
           echo "Test level: ${LEVEL:-none}  tests: ${ARG:-n/a}"
       - name: Deploy delta
         run: |
-          if ! grep -q "<types>" delta/package/package.xml 2>/dev/null; then
+          if [ ! -f delta/package/package.xml ] || ! grep -q "<types>" delta/package/package.xml; then
             echo "No deployable metadata changes."; exit 0
           fi
           ARGS="--manifest delta/package/package.xml"

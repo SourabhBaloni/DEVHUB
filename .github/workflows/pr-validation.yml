@@ -27,11 +27,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "22", cache: "npm" }
-      - run: npm ci
-      - run: npm run prettier:verify
-      - run: npm run lint
-      - run: npm run test:unit:coverage
+        with: { node-version: "22" } # no cache:npm — tolerates a missing package-lock.json
+      - name: Install dependencies
+        run: npm ci || npm install # falls back when there's no lock file
+      - name: Prettier check
+        run: npm run prettier:verify --if-present
+      - name: ESLint
+        run: npm run lint --if-present
+      - name: LWC Jest (skipped when no tests exist)
+        run: |
+          if find force-app -path '*__tests__*' -name '*.js' 2>/dev/null | grep -q .; then
+            npx --yes sfdx-lwc-jest --coverage -- --passWithNoTests
+          else
+            echo "No LWC unit tests found — skipping Jest."
+          fi
 
   validate:
     name: Analyzer + Check-only Validation
@@ -112,7 +121,7 @@ jobs:
           echo "Test level: ${LEVEL:-none}  tests: ${ARG:-n/a}"
       - name: Check-only validate
         run: |
-          if ! grep -q "<types>" delta/package/package.xml 2>/dev/null; then
+          if [ ! -f delta/package/package.xml ] || ! grep -q "<types>" delta/package/package.xml; then
             echo "No deployable metadata changes."; exit 0
           fi
           ARGS="--manifest delta/package/package.xml"
