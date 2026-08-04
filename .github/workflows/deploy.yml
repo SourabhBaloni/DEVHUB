@@ -1,7 +1,7 @@
 name: Deploy
 on:
   push:
-    branches: [QA]
+    branches: [SIT, UAT, ProdRelease]
     paths: ["force-app/**", "manifest/**"]
 
 concurrency:
@@ -17,7 +17,9 @@ jobs:
       - id: map
         run: |
           case "${{ github.ref_name }}" in
-            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
+            SIT) echo "environment=SIT" >> "$GITHUB_OUTPUT" ;;
+            UAT) echo "environment=UAT" >> "$GITHUB_OUTPUT" ;;
+            ProdRelease) echo "environment=ProdRelease" >> "$GITHUB_OUTPUT" ;;
           esac
 
   deploy:
