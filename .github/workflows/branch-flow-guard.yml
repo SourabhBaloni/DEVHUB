@@ -2,7 +2,7 @@ name: Branch Flow Guard
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
-    branches: [QA]
+    branches: [QA, main]
 
 jobs:
   guard:
@@ -16,7 +16,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           BASE_REF: ${{ github.base_ref }}
         run: |
-          FLOW=(QA)   # ordered stages, first -> last (last = production)
+          FLOW=(QA main)   # ordered stages, first -> last (last = production)
 
           # 1) If the head IS a stage branch, only allow promotion to the very next stage.
           for i in "${!FLOW[@]}"; do
@@ -39,6 +39,12 @@ jobs:
             ts=$(git show -s --format=%ct "$mb" 2>/dev/null || echo -1)
             if [ "$ts" -gt "$best_ts" ]; then best_ts=$ts; best=$b; fi
           done
+          # No merge-base with ANY stage → unrelated histories (the "nothing to compare"
+          # trap). Point the author at the correct fix instead of a cryptic empty message.
+          if [ -z "$best" ]; then
+            echo "::error::'$HEAD_REF' shares no history with any stage (${FLOW[*]}). Re-create it from the stage you want to merge into:  git fetch origin && git checkout -b $HEAD_REF origin/$BASE_REF"
+            exit 1
+          fi
           if [ "$BASE_REF" = "$best" ]; then
             echo "OK: '$HEAD_REF' was cut from '$best' and targets '$best'."; exit 0
           fi

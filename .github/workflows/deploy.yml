@@ -1,7 +1,7 @@
 name: Deploy
 on:
   push:
-    branches: [QA]
+    branches: [QA, main]
     paths: ["force-app/**", "manifest/**"]
 
 concurrency:
@@ -18,6 +18,7 @@ jobs:
         run: |
           case "${{ github.ref_name }}" in
             QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
+            main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
           esac
 
   deploy:
@@ -77,8 +78,13 @@ jobs:
             ARGS="$ARGS --test-level ${{ steps.tests.outputs.level }}"
           fi
           echo "sf project deploy start $ARGS"
-          sf project deploy start $ARGS --target-org targetOrg --wait 60 --json > deploy_result.json \
-            || (cat deploy_result.json; exit 1)
+          if ! sf project deploy start $ARGS --target-org targetOrg --wait 60 --json > deploy_result.json; then
+            cat deploy_result.json
+            if grep -qiE "Dependent class is invalid|Invalid type:" deploy_result.json; then
+              echo "::warning::An Apex type failed to compile. If the named class is NOT in this deploy's diff, it is a PRE-EXISTING error already in the target org — fix or remove that metadata in the org. It is not caused by these changes."
+            fi
+            exit 1
+          fi
       - name: Apply destructive changes (deletions)
         run: |
           DXML=delta/destructiveChanges/destructiveChanges.xml
@@ -91,6 +97,44 @@ jobs:
           else
             echo "No destructive changes."
           fi
+      - name: Readable Deployment summary
+        if: always()
+        env:
+          RESULT_FILE: deploy_result.json
+          RESULT_TITLE: Deployment
+        run: |
+          [ -f "$RESULT_FILE" ] || { echo "No $RESULT_FILE to summarize."; exit 0; }
+          node <<'NODE'
+          const fs = require('fs');
+          const file = process.env.RESULT_FILE, title = process.env.RESULT_TITLE;
+          let j = {};
+          try { j = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { process.exit(0); }
+          const d = (j.result && j.result.details) || j.details || {};
+          const clean = s => String(s == null ? '' : s).split('\n').join(' ').split('|').join('\\|');
+          const comp = (d.componentFailures ? [].concat(d.componentFailures) : []).filter(Boolean);
+          const rt = d.runTestResult || {};
+          const tests = (rt.failures ? [].concat(rt.failures) : []).filter(Boolean);
+          const ok = (j.result && j.result.success) === true || j.status === 0;
+          const out = ['## ' + title + ': ' + (ok ? '\u2705 passed' : '\u274c failed')];
+          if (!ok && j.message) out.push('', '> ' + clean(j.message));
+          if (comp.length) {
+            out.push('', '### Component failures', '| Component | Type | Line | Problem |', '|---|---|---|---|');
+            comp.forEach(c => {
+              out.push('| ' + clean(c.fullName) + ' | ' + clean(c.componentType) + ' | ' + (c.lineNumber || '') + ' | ' + clean(c.problem) + ' |');
+              console.log('::error file=' + (c.fileName || '') + ',line=' + (c.lineNumber || 1) + '::' + clean(c.fullName) + ': ' + clean(c.problem));
+            });
+          }
+          if (tests.length) {
+            out.push('', '### Apex test failures', '| Test | Message |', '|---|---|');
+            tests.forEach(t => {
+              out.push('| ' + clean(t.name) + '.' + clean(t.methodName) + ' | ' + clean(t.message) + ' |');
+              console.log('::error::' + clean(t.name) + '.' + clean(t.methodName) + ': ' + clean(t.message));
+            });
+          }
+          if (ok && !comp.length && !tests.length) out.push('', 'No component or test failures.');
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+          NODE
+
       - name: Upload deploy result
         if: always()
         uses: actions/upload-artifact@v4

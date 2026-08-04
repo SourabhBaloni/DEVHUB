@@ -2,7 +2,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [QA]
+    branches: [QA, main]
     paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
 
 concurrency:
@@ -19,6 +19,7 @@ jobs:
         run: |
           case "${{ github.base_ref }}" in
             QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
+            main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
           esac
 
   quality:
@@ -132,8 +133,51 @@ jobs:
             ARGS="$ARGS --test-level ${{ steps.tests.outputs.level }}"
           fi
           echo "sf project deploy validate $ARGS"
-          sf project deploy validate $ARGS --target-org targetOrg --wait 60 --json > validate_result.json \
-            || (cat validate_result.json; exit 1)
+          if ! sf project deploy validate $ARGS --target-org targetOrg --wait 60 --json > validate_result.json; then
+            cat validate_result.json
+            if grep -qiE "Dependent class is invalid|Invalid type:" validate_result.json; then
+              echo "::warning::An Apex type failed to compile. If the named class is NOT in this PR's diff, it is a PRE-EXISTING error already in the target org — fix or remove that metadata in the org. It is not caused by your changes."
+            fi
+            exit 1
+          fi
+      - name: Readable Validation summary
+        if: always()
+        env:
+          RESULT_FILE: validate_result.json
+          RESULT_TITLE: Validation
+        run: |
+          [ -f "$RESULT_FILE" ] || { echo "No $RESULT_FILE to summarize."; exit 0; }
+          node <<'NODE'
+          const fs = require('fs');
+          const file = process.env.RESULT_FILE, title = process.env.RESULT_TITLE;
+          let j = {};
+          try { j = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { process.exit(0); }
+          const d = (j.result && j.result.details) || j.details || {};
+          const clean = s => String(s == null ? '' : s).split('\n').join(' ').split('|').join('\\|');
+          const comp = (d.componentFailures ? [].concat(d.componentFailures) : []).filter(Boolean);
+          const rt = d.runTestResult || {};
+          const tests = (rt.failures ? [].concat(rt.failures) : []).filter(Boolean);
+          const ok = (j.result && j.result.success) === true || j.status === 0;
+          const out = ['## ' + title + ': ' + (ok ? '\u2705 passed' : '\u274c failed')];
+          if (!ok && j.message) out.push('', '> ' + clean(j.message));
+          if (comp.length) {
+            out.push('', '### Component failures', '| Component | Type | Line | Problem |', '|---|---|---|---|');
+            comp.forEach(c => {
+              out.push('| ' + clean(c.fullName) + ' | ' + clean(c.componentType) + ' | ' + (c.lineNumber || '') + ' | ' + clean(c.problem) + ' |');
+              console.log('::error file=' + (c.fileName || '') + ',line=' + (c.lineNumber || 1) + '::' + clean(c.fullName) + ': ' + clean(c.problem));
+            });
+          }
+          if (tests.length) {
+            out.push('', '### Apex test failures', '| Test | Message |', '|---|---|');
+            tests.forEach(t => {
+              out.push('| ' + clean(t.name) + '.' + clean(t.methodName) + ' | ' + clean(t.message) + ' |');
+              console.log('::error::' + clean(t.name) + '.' + clean(t.methodName) + ': ' + clean(t.message));
+            });
+          }
+          if (ok && !comp.length && !tests.length) out.push('', 'No component or test failures.');
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+          NODE
+
       - name: Coverage check (changed Apex classes)
         if: ${{ env.MIN_TEST_COVERAGE != '0' }}
         run: |
