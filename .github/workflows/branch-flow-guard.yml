@@ -1,0 +1,46 @@
+name: Branch Flow Guard
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [QA]
+
+jobs:
+  guard:
+    name: Branch Flow Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Enforce the promotion flow
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          FLOW=(QA)   # ordered stages, first -> last (last = production)
+
+          # 1) If the head IS a stage branch, only allow promotion to the very next stage.
+          for i in "${!FLOW[@]}"; do
+            if [ "$HEAD_REF" = "${FLOW[$i]}" ]; then
+              next="${FLOW[$((i + 1))]:-}"
+              if [ -n "$next" ] && [ "$BASE_REF" = "$next" ]; then
+                echo "Promotion OK: $HEAD_REF -> $BASE_REF"; exit 0
+              fi
+              echo "::error::Stage '$HEAD_REF' may only be promoted to '${next:-(none — final stage)}', not '$BASE_REF'."
+              exit 1
+            fi
+          done
+
+          # 2) Otherwise it's a feature/hotfix branch: it may only merge into the stage it
+          #    was cut from (the stage whose merge-base with this branch is the newest).
+          git fetch origin "${FLOW[@]}" >/dev/null 2>&1 || true
+          best=""; best_ts=-1
+          for b in "${FLOW[@]}"; do
+            mb=$(git merge-base "origin/$b" HEAD 2>/dev/null) || continue
+            ts=$(git show -s --format=%ct "$mb" 2>/dev/null || echo -1)
+            if [ "$ts" -gt "$best_ts" ]; then best_ts=$ts; best=$b; fi
+          done
+          if [ "$BASE_REF" = "$best" ]; then
+            echo "OK: '$HEAD_REF' was cut from '$best' and targets '$best'."; exit 0
+          fi
+          echo "::error::'$HEAD_REF' was created from '$best' — it can only be merged into '$best', not '$BASE_REF'."
+          exit 1

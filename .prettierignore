@@ -9,3 +9,14 @@
 .vscode
 
 coverage/
+
+# --- added by sf-cicd-init: keep the format gate on source only ---
+node_modules/
+dist/
+build/
+delta/
+.sf-cicd/
+.husky/
+docs/
+.github/
+.claude/

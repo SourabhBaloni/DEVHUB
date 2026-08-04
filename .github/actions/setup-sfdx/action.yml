@@ -2,11 +2,11 @@ name: "Setup SFDX + Auth (JWT)"
 description: "Node, Salesforce CLI, sfdx-git-delta, and JWT login."
 
 inputs:
-  client-id: { required: true }
-  jwt-key: { required: true }
-  username: { required: true }
+  client-id:    { required: true }
+  jwt-key:      { required: true }
+  username:     { required: true }
   instance-url: { required: true }
-  alias: { default: "targetOrg" }
+  alias:        { default: "targetOrg" }
 
 runs:
   using: "composite"

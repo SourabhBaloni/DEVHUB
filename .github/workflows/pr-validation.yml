@@ -2,7 +2,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [SIT, UAT, ProdRelease]
+    branches: [QA]
     paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
 
 concurrency:
@@ -18,9 +18,7 @@ jobs:
       - id: map
         run: |
           case "${{ github.base_ref }}" in
-            SIT) echo "environment=SIT" >> "$GITHUB_OUTPUT" ;;
-            UAT) echo "environment=UAT" >> "$GITHUB_OUTPUT" ;;
-            ProdRelease) echo "environment=ProdRelease" >> "$GITHUB_OUTPUT" ;;
+            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
           esac
 
   quality:
@@ -29,13 +27,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "22" } # no cache:npm — tolerates a missing package-lock.json
+        with: { node-version: "22" }   # no cache:npm — tolerates a missing package-lock.json
       - name: Install dependencies
-        run: npm ci || npm install # falls back when there's no lock file
+        run: npm ci || npm install      # falls back when there's no lock file
       - name: Prettier check
         run: npm run prettier:verify --if-present
       - name: ESLint
-        run: npm run lint --if-present
+        # --no-error-on-unmatched-pattern: don't fail when there are no LWC/Aura JS to lint.
+        run: npm run lint --if-present -- --no-error-on-unmatched-pattern
       - name: LWC Jest (skipped when no tests exist)
         run: |
           if find force-app -path '*__tests__*' -name '*.js' 2>/dev/null | grep -q .; then
@@ -61,9 +60,9 @@ jobs:
         run: git fetch origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
       - uses: ./.github/actions/setup-sfdx
         with:
-          client-id: ${{ secrets.SF_CLIENT_ID }}
-          jwt-key: ${{ secrets.SF_JWT_KEY }}
-          username: ${{ secrets.SF_USERNAME }}
+          client-id:    ${{ secrets.SF_CLIENT_ID }}
+          jwt-key:      ${{ secrets.SF_JWT_KEY }}
+          username:     ${{ secrets.SF_USERNAME }}
           instance-url: ${{ secrets.SF_INSTANCE_URL }}
           alias: targetOrg
       - name: Generate delta (merge-base)
