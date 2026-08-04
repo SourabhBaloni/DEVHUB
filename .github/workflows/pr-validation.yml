@@ -2,7 +2,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [SIT, main]
+    branches: [Qa, main]
     paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
 
 concurrency:
@@ -18,7 +18,7 @@ jobs:
       - id: map
         run: |
           case "${{ github.base_ref }}" in
-            SIT) echo "environment=SIT" >> "$GITHUB_OUTPUT" ;;
+            Qa) echo "environment=Qa" >> "$GITHUB_OUTPUT" ;;
             main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
           esac
 
