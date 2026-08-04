@@ -4,6 +4,7 @@ public with sharing class ContactUtility {
     return [
       SELECT Id, FirstName, LastName, Email
       FROM Contact
+      WITH USER_MODE
       ORDER BY LastName
       LIMIT 10
     ];
@@ -21,7 +22,7 @@ public with sharing class ContactUtility {
       Email = email
     );
 
-    insert con;
+    insert as user con;
     return con;
   }
 }
