@@ -2,7 +2,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [Qa, main]
+    branches: [QA, UAT, main]
     paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
 
 concurrency:
@@ -18,7 +18,8 @@ jobs:
       - id: map
         run: |
           case "${{ github.base_ref }}" in
-            Qa) echo "environment=Qa" >> "$GITHUB_OUTPUT" ;;
+            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
+            UAT) echo "environment=UAT" >> "$GITHUB_OUTPUT" ;;
             main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
           esac
 
@@ -61,10 +62,10 @@ jobs:
         run: git fetch origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
       - uses: ./.github/actions/setup-sfdx
         with:
-          client-id:    ${{ secrets.SF_CLIENT_ID }}
+          client-id:    ${{ secrets.SF_CONSUMER_KEY }}
           jwt-key:      ${{ secrets.SF_JWT_KEY }}
-          username:     ${{ secrets.SF_USERNAME }}
-          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          username:     ${{ vars.SF_USERNAME }}
+          instance-url: ${{ vars.INSTANCE_URL }}
           alias: targetOrg
       - name: Generate delta (merge-base)
         run: |

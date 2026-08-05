@@ -1,7 +1,7 @@
 name: Deploy
 on:
   push:
-    branches: [Qa, main]
+    branches: [QA, UAT, main]
     paths: ["force-app/**", "manifest/**"]
 
 concurrency:
@@ -17,7 +17,8 @@ jobs:
       - id: map
         run: |
           case "${{ github.ref_name }}" in
-            Qa) echo "environment=Qa" >> "$GITHUB_OUTPUT" ;;
+            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
+            UAT) echo "environment=UAT" >> "$GITHUB_OUTPUT" ;;
             main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
           esac
 
@@ -36,10 +37,10 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: ./.github/actions/setup-sfdx
         with:
-          client-id:    ${{ secrets.SF_CLIENT_ID }}
+          client-id:    ${{ secrets.SF_CONSUMER_KEY }}
           jwt-key:      ${{ secrets.SF_JWT_KEY }}
-          username:     ${{ secrets.SF_USERNAME }}
-          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          username:     ${{ vars.SF_USERNAME }}
+          instance-url: ${{ vars.INSTANCE_URL }}
           alias: targetOrg
       - name: Generate delta
         run: |
