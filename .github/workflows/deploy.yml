@@ -2,7 +2,8 @@ name: Deploy
 on:
   push:
     branches: [QA, UAT, main]
-    paths: ["force-app/**", "manifest/**"]
+    paths: ["force-app/**", "manifest/**", "data/**"]
+  workflow_dispatch:   # manual "Run workflow" button: loads data/ into the selected branch's org
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -25,6 +26,7 @@ jobs:
   deploy:
     name: Delta Deploy
     needs: resolve-env
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-env.outputs.environment }}
     env:
@@ -142,6 +144,79 @@ jobs:
         with:
           name: deploy-result-${{ github.run_id }}
           path: deploy_result.json
+          if-no-files-found: ignore
+      - name: Cleanup
+        if: always()
+        run: sf org logout --target-org targetOrg --no-prompt || true
+
+  # Loads the CSV records in data/ with SFDMU. Runs after the metadata deploy so new
+  # fields exist first. Push: only when data/** changed. Manual run: always.
+  # Production is skipped unless the repo variable SFDMU_ALLOW_PROD is 'true'.
+  data-load:
+    name: Data Load (SFDMU)
+    needs: [resolve-env, deploy]
+    if: >-
+      always() &&
+      needs.resolve-env.outputs.environment != '' &&
+      (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') &&
+      (needs.resolve-env.outputs.environment != 'production' || vars.SFDMU_ALLOW_PROD == 'true')
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - name: Check for data changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || git diff --name-only HEAD~1 HEAD -- data/ | grep -q .; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changes under data/ — skipping data load."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/setup-sfdx
+        if: steps.changes.outputs.run == 'true'
+        with:
+          client-id:    ${{ secrets.SF_CONSUMER_KEY }}
+          jwt-key:      ${{ secrets.SF_JWT_KEY }}
+          username:     ${{ vars.SF_USERNAME }}
+          instance-url: ${{ vars.INSTANCE_URL }}
+          alias: targetOrg
+      - name: Install SFDMU
+        if: steps.changes.outputs.run == 'true'
+        run: echo "y" | sf plugins install sfdmu
+      - name: Load data
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          ARGS="--sourceusername csvfile --targetusername targetOrg --path data --noprompt"
+          # SFDMU refuses to write to production unless the org domain is passed explicitly.
+          if [ "${{ needs.resolve-env.outputs.environment }}" = "production" ]; then
+            ARGS="$ARGS --canmodify $(echo '${{ vars.INSTANCE_URL }}' | sed -E 's#https?://##; s#/.*##')"
+          fi
+          sf sfdmu run $ARGS
+      - name: Readable data load summary
+        if: always() && steps.changes.outputs.run == 'true'
+        run: |
+          {
+            echo "## Data load (SFDMU)"
+            for f in data/target/*_target.csv; do
+              [ -f "$f" ] || continue
+              rows=$(( $(wc -l < "$f") - 1 ))
+              echo "- \`$(basename "$f" .csv)\`: $rows records"
+            done
+            if [ -f data/reports/CSVIssuesReport.csv ] && [ "$(wc -l < data/reports/CSVIssuesReport.csv)" -gt 1 ]; then
+              echo ""; echo "⚠️ CSV issues found — see the sfdmu-logs artifact (reports/CSVIssuesReport.csv)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload SFDMU logs
+        if: always() && steps.changes.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sfdmu-logs-${{ github.run_id }}
+          path: |
+            data/logs/
+            data/reports/
+            data/target/
           if-no-files-found: ignore
       - name: Cleanup
         if: always()

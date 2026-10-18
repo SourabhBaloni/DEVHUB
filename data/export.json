@@ -1,0 +1,14 @@
+{
+  "objects": [
+    {
+      "query": "SELECT Id, Name, Type, Industry, Phone, Website, BillingStreet, BillingCity, BillingState, BillingCountry, AnnualRevenue, NumberOfEmployees FROM Account",
+      "operation": "Upsert",
+      "externalId": "Name"
+    },
+    {
+      "query": "SELECT Id, Name, AccountId, StageName, CloseDate, Amount, Type, LeadSource, Description FROM Opportunity",
+      "operation": "Upsert",
+      "externalId": "Name"
+    }
+  ]
+}

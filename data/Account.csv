@@ -1,0 +1,11 @@
+Id,Name,Type,Industry,Phone,Website,BillingStreet,BillingCity,BillingState,BillingCountry,AnnualRevenue,NumberOfEmployees
+ACC-001,SFDMU Demo - Acme Finance,Customer - Direct,Banking,+91 11 4000 1001,https://acme-finance.example.com,12 Connaught Place,New Delhi,Delhi,India,25000000,250
+ACC-002,SFDMU Demo - Bluewave Tech,Prospect,Technology,+91 80 4000 1002,https://bluewave.example.com,45 MG Road,Bengaluru,Karnataka,India,12000000,120
+ACC-003,SFDMU Demo - Crestline Retail,Customer - Direct,Retail,+91 22 4000 1003,https://crestline.example.com,8 Linking Road,Mumbai,Maharashtra,India,8000000,90
+ACC-004,SFDMU Demo - Deltaforge Manufacturing,Customer - Channel,Manufacturing,+91 20 4000 1004,https://deltaforge.example.com,77 Hinjewadi Phase 1,Pune,Maharashtra,India,40000000,600
+ACC-005,SFDMU Demo - Evergreen Health,Prospect,Healthcare,+91 44 4000 1005,https://evergreen.example.com,3 Anna Salai,Chennai,Tamil Nadu,India,15000000,180
+ACC-006,SFDMU Demo - Falcon Logistics,Customer - Direct,Transportation,+91 40 4000 1006,https://falcon.example.com,21 Hitech City,Hyderabad,Telangana,India,9500000,140
+ACC-007,SFDMU Demo - Granite Energy,Customer - Channel,Energy,+91 79 4000 1007,https://granite.example.com,5 SG Highway,Ahmedabad,Gujarat,India,60000000,800
+ACC-008,SFDMU Demo - Horizon Education,Prospect,Education,+91 33 4000 1008,https://horizon.example.com,14 Park Street,Kolkata,West Bengal,India,3000000,45
+ACC-009,SFDMU Demo - Indigo Media,Customer - Direct,Media,+91 172 400 1009,https://indigo.example.com,9 Sector 17,Chandigarh,Chandigarh,India,5000000,60
+ACC-010,SFDMU Demo - Juniper Insurance,Prospect,Insurance,+91 141 400 1010,https://juniper.example.com,30 MI Road,Jaipur,Rajasthan,India,20000000,220
