@@ -1,0 +1,16 @@
+Id,Name,AccountId,StageName,CloseDate,Amount,Type,LeadSource,Description
+OPP-001,SFDMU Demo - Acme Business Loan,ACC-001,Prospecting,2026-12-15,3900000,New Customer,Web,Loaded by SFDMU via CI/CD
+OPP-002,SFDMU Demo - Acme Credit Line,ACC-001,Negotiation/Review,2026-11-30,1500000,Existing Customer - Upgrade,Partner Referral,Loaded by SFDMU via CI/CD
+OPP-003,SFDMU Demo - Bluewave Cloud Licences,ACC-002,Qualification,2027-01-20,750000,New Customer,Web,Loaded by SFDMU via CI/CD
+OPP-004,SFDMU Demo - Crestline POS Rollout,ACC-003,Proposal/Price Quote,2026-12-01,420000,New Customer,Phone Inquiry,Loaded by SFDMU via CI/CD
+OPP-005,SFDMU Demo - Deltaforge Plant Upgrade,ACC-004,Id. Decision Makers,2027-02-28,5200000,Existing Customer - Upgrade,Partner Referral,Loaded by SFDMU via CI/CD
+OPP-006,SFDMU Demo - Deltaforge Maintenance,ACC-004,Closed Won,2026-09-30,800000,Existing Customer - Replacement,Other,Loaded by SFDMU via CI/CD
+OPP-007,SFDMU Demo - Evergreen Clinic Network,ACC-005,Prospecting,2027-03-15,2100000,New Customer,Web,Loaded by SFDMU via CI/CD
+OPP-008,SFDMU Demo - Falcon Fleet Finance,ACC-006,Value Proposition,2026-12-20,3300000,New Customer,Purchased List,Loaded by SFDMU via CI/CD
+OPP-009,SFDMU Demo - Granite Solar Project,ACC-007,Perception Analysis,2027-04-30,9800000,New Customer,Partner Referral,Loaded by SFDMU via CI/CD
+OPP-010,SFDMU Demo - Granite Grid Services,ACC-007,Closed Lost,2026-08-31,1200000,Existing Customer - Upgrade,Other,Loaded by SFDMU via CI/CD
+OPP-011,SFDMU Demo - Horizon Campus Wi-Fi,ACC-008,Qualification,2027-01-10,260000,New Customer,Web,Loaded by SFDMU via CI/CD
+OPP-012,SFDMU Demo - Indigo Ad Platform,ACC-009,Needs Analysis,2026-12-05,640000,New Customer,Phone Inquiry,Loaded by SFDMU via CI/CD
+OPP-013,SFDMU Demo - Juniper Policy Admin,ACC-010,Proposal/Price Quote,2027-02-15,1800000,New Customer,Web,Loaded by SFDMU via CI/CD
+OPP-014,SFDMU Demo - Juniper Claims Portal,ACC-010,Prospecting,2027-05-01,950000,New Customer,Partner Referral,Loaded by SFDMU via CI/CD
+OPP-015,SFDMU Demo - Bluewave Support Renewal,ACC-002,Closed Won,2026-10-01,180000,Existing Customer - Upgrade,Other,Loaded by SFDMU via CI/CD

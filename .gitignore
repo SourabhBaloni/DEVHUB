@@ -59,3 +59,9 @@ delta/
 .sf-cicd/
 GitHubActionsCI.crt
 GitHubActionsCI.key
+
+# SFDMU run output (logs + reports)
+data/logs/
+data/target/
+data/source/
+data/reports/
