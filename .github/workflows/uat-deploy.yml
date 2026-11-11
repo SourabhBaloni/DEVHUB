@@ -1,32 +1,20 @@
-name: Deploy
+# UAT environment — delta-deploys every push to 'UAT' into the org configured
+# in the GitHub Environment 'UAT'.
+name: "UAT · Deploy"
 on:
   push:
-    branches: [QA, UAT, main]
+    branches: [UAT]
     paths: ["force-app/**", "manifest/**"]
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: uat-deploy
   cancel-in-progress: false
 
 jobs:
-  resolve-env:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.map.outputs.environment }}
-    steps:
-      - id: map
-        run: |
-          case "${{ github.ref_name }}" in
-            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
-            UAT) echo "environment=UAT" >> "$GITHUB_OUTPUT" ;;
-            main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
-          esac
-
   deploy:
     name: Delta Deploy
-    needs: resolve-env
     runs-on: ubuntu-latest
-    environment: ${{ needs.resolve-env.outputs.environment }}
+    environment: UAT
     env:
       MIN_TEST_COVERAGE: ${{ vars.MIN_TEST_COVERAGE || '75' }}
       JOB_DEBUG: ${{ vars.JOB_DEBUG || 'false' }}
@@ -100,42 +88,8 @@ jobs:
           fi
       - name: Readable Deployment summary
         if: always()
-        env:
-          RESULT_FILE: deploy_result.json
-          RESULT_TITLE: Deployment
-        run: |
-          [ -f "$RESULT_FILE" ] || { echo "No $RESULT_FILE to summarize."; exit 0; }
-          node <<'NODE'
-          const fs = require('fs');
-          const file = process.env.RESULT_FILE, title = process.env.RESULT_TITLE;
-          let j = {};
-          try { j = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { process.exit(0); }
-          const d = (j.result && j.result.details) || j.details || {};
-          const clean = s => String(s == null ? '' : s).split('\n').join(' ').split('|').join('\\|');
-          const comp = (d.componentFailures ? [].concat(d.componentFailures) : []).filter(Boolean);
-          const rt = d.runTestResult || {};
-          const tests = (rt.failures ? [].concat(rt.failures) : []).filter(Boolean);
-          const ok = (j.result && j.result.success) === true || j.status === 0;
-          const out = ['## ' + title + ': ' + (ok ? '\u2705 passed' : '\u274c failed')];
-          if (!ok && j.message) out.push('', '> ' + clean(j.message));
-          if (comp.length) {
-            out.push('', '### Component failures', '| Component | Type | Line | Problem |', '|---|---|---|---|');
-            comp.forEach(c => {
-              out.push('| ' + clean(c.fullName) + ' | ' + clean(c.componentType) + ' | ' + (c.lineNumber || '') + ' | ' + clean(c.problem) + ' |');
-              console.log('::error file=' + (c.fileName || '') + ',line=' + (c.lineNumber || 1) + '::' + clean(c.fullName) + ': ' + clean(c.problem));
-            });
-          }
-          if (tests.length) {
-            out.push('', '### Apex test failures', '| Test | Message |', '|---|---|');
-            tests.forEach(t => {
-              out.push('| ' + clean(t.name) + '.' + clean(t.methodName) + ' | ' + clean(t.message) + ' |');
-              console.log('::error::' + clean(t.name) + '.' + clean(t.methodName) + ': ' + clean(t.message));
-            });
-          }
-          if (ok && !comp.length && !tests.length) out.push('', 'No component or test failures.');
-          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
-          NODE
-
+        uses: ./.github/actions/result-summary
+        with: { result-file: deploy_result.json, title: Deployment }
       - name: Upload deploy result
         if: always()
         uses: actions/upload-artifact@v4
