@@ -1,28 +1,18 @@
-name: PR Validation
+# Production environment — validates PRs targeting 'main' against the org configured
+# in the GitHub Environment 'production' (secrets SF_CONSUMER_KEY/SF_JWT_KEY, vars SF_USERNAME/INSTANCE_URL/MIN_TEST_COVERAGE).
+# Job names must stay identical across environments: the branch ruleset requires them as status checks.
+name: "Production · PR Validation"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [QA, UAT, main]
+    branches: [main]
     paths: ["force-app/**", "manifest/**", ".github/**", "package.json"]
 
 concurrency:
-  group: pr-validation-${{ github.ref }}
+  group: prod-pr-validation-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  resolve-env:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.map.outputs.environment }}
-    steps:
-      - id: map
-        run: |
-          case "${{ github.base_ref }}" in
-            QA) echo "environment=QA" >> "$GITHUB_OUTPUT" ;;
-            UAT) echo "environment=UAT" >> "$GITHUB_OUTPUT" ;;
-            main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
-          esac
-
   quality:
     name: Lint, Format & Jest
     runs-on: ubuntu-latest
@@ -47,9 +37,9 @@ jobs:
 
   validate:
     name: Analyzer + Check-only Validation
-    needs: [resolve-env, quality]
+    needs: [quality]
     runs-on: ubuntu-latest
-    environment: ${{ needs.resolve-env.outputs.environment }}
+    environment: production
     env:
       MIN_TEST_COVERAGE: ${{ vars.MIN_TEST_COVERAGE || '75' }}
       JOB_DEBUG: ${{ vars.JOB_DEBUG || 'false' }}
@@ -143,42 +133,8 @@ jobs:
           fi
       - name: Readable Validation summary
         if: always()
-        env:
-          RESULT_FILE: validate_result.json
-          RESULT_TITLE: Validation
-        run: |
-          [ -f "$RESULT_FILE" ] || { echo "No $RESULT_FILE to summarize."; exit 0; }
-          node <<'NODE'
-          const fs = require('fs');
-          const file = process.env.RESULT_FILE, title = process.env.RESULT_TITLE;
-          let j = {};
-          try { j = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { process.exit(0); }
-          const d = (j.result && j.result.details) || j.details || {};
-          const clean = s => String(s == null ? '' : s).split('\n').join(' ').split('|').join('\\|');
-          const comp = (d.componentFailures ? [].concat(d.componentFailures) : []).filter(Boolean);
-          const rt = d.runTestResult || {};
-          const tests = (rt.failures ? [].concat(rt.failures) : []).filter(Boolean);
-          const ok = (j.result && j.result.success) === true || j.status === 0;
-          const out = ['## ' + title + ': ' + (ok ? '\u2705 passed' : '\u274c failed')];
-          if (!ok && j.message) out.push('', '> ' + clean(j.message));
-          if (comp.length) {
-            out.push('', '### Component failures', '| Component | Type | Line | Problem |', '|---|---|---|---|');
-            comp.forEach(c => {
-              out.push('| ' + clean(c.fullName) + ' | ' + clean(c.componentType) + ' | ' + (c.lineNumber || '') + ' | ' + clean(c.problem) + ' |');
-              console.log('::error file=' + (c.fileName || '') + ',line=' + (c.lineNumber || 1) + '::' + clean(c.fullName) + ': ' + clean(c.problem));
-            });
-          }
-          if (tests.length) {
-            out.push('', '### Apex test failures', '| Test | Message |', '|---|---|');
-            tests.forEach(t => {
-              out.push('| ' + clean(t.name) + '.' + clean(t.methodName) + ' | ' + clean(t.message) + ' |');
-              console.log('::error::' + clean(t.name) + '.' + clean(t.methodName) + ': ' + clean(t.message));
-            });
-          }
-          if (ok && !comp.length && !tests.length) out.push('', 'No component or test failures.');
-          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
-          NODE
-
+        uses: ./.github/actions/result-summary
+        with: { result-file: validate_result.json, title: Validation }
       - name: Coverage check (changed Apex classes)
         if: ${{ env.MIN_TEST_COVERAGE != '0' }}
         run: |

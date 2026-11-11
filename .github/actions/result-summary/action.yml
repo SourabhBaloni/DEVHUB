@@ -1,0 +1,46 @@
+name: "Deploy/Validate Result Summary"
+description: "Turns an sf deploy/validate --json result into a job summary + error annotations."
+
+inputs:
+  result-file: { required: true }
+  title:       { required: true }
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        RESULT_FILE: ${{ inputs.result-file }}
+        RESULT_TITLE: ${{ inputs.title }}
+      run: |
+        [ -f "$RESULT_FILE" ] || { echo "No $RESULT_FILE to summarize."; exit 0; }
+        node <<'NODE'
+        const fs = require('fs');
+        const file = process.env.RESULT_FILE, title = process.env.RESULT_TITLE;
+        let j = {};
+        try { j = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { process.exit(0); }
+        const d = (j.result && j.result.details) || j.details || {};
+        const clean = s => String(s == null ? '' : s).split('\n').join(' ').split('|').join('\|');
+        const comp = (d.componentFailures ? [].concat(d.componentFailures) : []).filter(Boolean);
+        const rt = d.runTestResult || {};
+        const tests = (rt.failures ? [].concat(rt.failures) : []).filter(Boolean);
+        const ok = (j.result && j.result.success) === true || j.status === 0;
+        const out = ['## ' + title + ': ' + (ok ? '\u2705 passed' : '\u274c failed')];
+        if (!ok && j.message) out.push('', '> ' + clean(j.message));
+        if (comp.length) {
+          out.push('', '### Component failures', '| Component | Type | Line | Problem |', '|---|---|---|---|');
+          comp.forEach(c => {
+            out.push('| ' + clean(c.fullName) + ' | ' + clean(c.componentType) + ' | ' + (c.lineNumber || '') + ' | ' + clean(c.problem) + ' |');
+            console.log('::error file=' + (c.fileName || '') + ',line=' + (c.lineNumber || 1) + '::' + clean(c.fullName) + ': ' + clean(c.problem));
+          });
+        }
+        if (tests.length) {
+          out.push('', '### Apex test failures', '| Test | Message |', '|---|---|');
+          tests.forEach(t => {
+            out.push('| ' + clean(t.name) + '.' + clean(t.methodName) + ' | ' + clean(t.message) + ' |');
+            console.log('::error::' + clean(t.name) + '.' + clean(t.methodName) + ': ' + clean(t.message));
+          });
+        }
+        if (ok && !comp.length && !tests.length) out.push('', 'No component or test failures.');
+        if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+        NODE

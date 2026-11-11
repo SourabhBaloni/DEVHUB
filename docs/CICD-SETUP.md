@@ -239,8 +239,11 @@ Merge the PR into `main`.
 | File                                    | Purpose                                                             |
 | --------------------------------------- | ------------------------------------------------------------------- |
 | `.github/actions/setup-sfdx/action.yml` | Shared setup: Node, npm, Salesforce CLI, `sfdx-git-delta`, JWT auth |
-| `.github/workflows/pr-validation.yml`   | PR → check-only validation + quality gates                          |
-| `.github/workflows/deploy.yml`          | Push to `main` → delta deploy to Sandbox                            |
+| `.github/workflows/uat-pr-validation.yml`  | PR → `UAT`: check-only validation + quality gates (Environment `UAT`)        |
+| `.github/workflows/uat-deploy.yml`         | Push to `UAT` → delta deploy (Environment `UAT`)                            |
+| `.github/workflows/prod-pr-validation.yml` | PR → `main`: check-only validation + quality gates (Environment `production`) |
+| `.github/workflows/prod-deploy.yml`        | Push to `main` → delta deploy (Environment `production`)                    |
+| `.github/actions/result-summary/`          | Shared: turns deploy/validate JSON into a job summary                       |
 | `docs/CICD-SETUP.md`                    | This guide                                                          |
 
 ### How the delta is calculated
